@@ -1,0 +1,6 @@
+.o_vhg_balance_sheet {
+    td.line_cell[data-expression_label="balance"] > .wrapper {
+        justify-content: flex-end !important;
+    }
+}
+
