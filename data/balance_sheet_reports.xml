@@ -47,11 +47,14 @@
         <field name="context" eval="{'report_id': ref('tha_vhg_bs_ext.report_vhg_balance_sheet_summary')}"/>
     </record>
 
+    <menuitem id="menu_vhg_management_reports" name="Management Reports"
+              parent="account.menu_finance_configuration"
+              groups="account.group_account_readonly" sequence="5"/>
+
     <menuitem id="menu_action_report_vhg_balance_sheet_notes" name="Management Balance Sheet Notes"
-              action="action_report_vhg_balance_sheet_notes" parent="tha_vhg_pnl_ext.menu_vhg_management_reports"
+              action="action_report_vhg_balance_sheet_notes" parent="menu_vhg_management_reports"
               groups="account.group_account_readonly" sequence="60"/>
     <menuitem id="menu_action_report_vhg_balance_sheet_summary" name="Management Balance Sheet Summary"
-              action="action_report_vhg_balance_sheet_summary" parent="tha_vhg_pnl_ext.menu_vhg_management_reports"
+              action="action_report_vhg_balance_sheet_summary" parent="menu_vhg_management_reports"
               groups="account.group_account_readonly" sequence="70"/>
 </odoo>
-

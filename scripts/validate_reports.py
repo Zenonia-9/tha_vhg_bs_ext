@@ -3,6 +3,9 @@ summary = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_summary")
 
 for report in (notes, summary):
     options = report.get_options({})
+    assert isinstance(options.get("vhg_notes_header_rows"), list), (
+        f"{report.name}: reusable report header rows were not initialized"
+    )
     lines = report._get_lines(options)
     assert lines, f"{report.name}: no lines"
     names = [line["name"] for line in lines]

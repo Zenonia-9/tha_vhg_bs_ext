@@ -35,9 +35,13 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
         options.update({
             "vhg_notes_company_names": ", ".join(companies.mapped("name")) or self.env.company.name,
             "vhg_notes_report_title": self._REPORT_TITLE,
+            # NotesReportHeader iterates this value directly. Keep the native
+            # account-report period headers while guaranteeing an iterable
+            # value when the report has no comparison columns.
+            "vhg_notes_header_rows": options.get("column_headers", []),
         })
         options["custom_display_config"].update({
-            "templates": {"AccountReportHeader": "tha_vhg_pnl_ext.NotesReportHeader"},
+            "templates": {"AccountReportHeader": "tha_vhg_bs_ext.BalanceSheetReportHeader"},
             "css_custom_class": "o_vhg_balance_sheet",
         })
 

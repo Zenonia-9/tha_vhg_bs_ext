@@ -1,6 +1,11 @@
 .o_vhg_balance_sheet {
+    .o_vhg_bs_report_title {
+        text-align: center;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
     td.line_cell[data-expression_label="balance"] > .wrapper {
         justify-content: flex-end !important;
     }
 }
-

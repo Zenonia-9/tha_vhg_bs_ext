@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tha_vhg_bs_ext.BalanceSheetReportHeader">
+        <thead id="table_header" class="sticky">
+            <tr data-id="report_title_row">
+                <th class="o_vhg_bs_report_title"
+                    t-att-colspan="controller.options.columns.length + 1">
+                    <span t-out="controller.options.vhg_notes_company_names"/>
+                    <br/>
+                    <span t-out="controller.options.vhg_notes_report_title"/>
+                </th>
+            </tr>
+            <t t-foreach="controller.options.vhg_notes_header_rows || []"
+               t-as="headerRow" t-key="headerRow_index">
+                <tr data-id="column_headers_row">
+                    <th/>
+                    <t t-foreach="headerRow" t-as="header" t-key="header_index">
+                        <th class="column_header"
+                            t-att-colspan="header.colspan || 1"
+                            t-att-rowspan="header.rowspan || 1">
+                            <t t-out="header.name"/>
+                        </th>
+                    </t>
+                </tr>
+            </t>
+            <tr data-id="column_subheaders_row">
+                <th/>
+                <t t-foreach="controller.options.columns" t-as="column" t-key="column_index">
+                    <th class="column_header"><t t-out="column.name"/></th>
+                </t>
+            </tr>
+        </thead>
+    </t>
+</templates>
