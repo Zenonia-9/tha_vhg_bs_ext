@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="report_vhg_balance_sheet_notes" model="account.report">
-        <field name="name">Management Balance Sheet Notes</field>
+        <field name="name">Management Balance Sheet Notes &amp; Summary</field>
         <field name="filter_unfold_all" eval="True"/>
         <field name="filter_date_range" eval="False"/>
         <field name="filter_journals" eval="True"/>
@@ -35,7 +35,7 @@
     </record>
 
     <record id="action_report_vhg_balance_sheet_notes" model="ir.actions.client">
-        <field name="name">Management Balance Sheet Notes</field>
+        <field name="name">Management Balance Sheet Notes &amp; Summary</field>
         <field name="tag">account_report</field>
         <field name="path">vhg-balance-sheet-notes</field>
         <field name="context" eval="{'report_id': ref('tha_vhg_bs_ext.report_vhg_balance_sheet_notes')}"/>
@@ -51,10 +51,14 @@
               parent="account.menu_finance_configuration"
               groups="account.group_account_readonly" sequence="5"/>
 
-    <menuitem id="menu_action_report_vhg_balance_sheet_notes" name="Management Balance Sheet Notes"
+    <menuitem id="menu_action_report_vhg_balance_sheet_notes" name="Management Balance Sheet Notes &amp; Summary"
               action="action_report_vhg_balance_sheet_notes" parent="menu_vhg_management_reports"
               groups="account.group_account_readonly" sequence="60"/>
     <menuitem id="menu_action_report_vhg_balance_sheet_summary" name="Management Balance Sheet Summary"
               action="action_report_vhg_balance_sheet_summary" parent="menu_vhg_management_reports"
               groups="account.group_account_readonly" sequence="70"/>
+
+    <!-- Share an already-installed Management Reports root when available,
+         while retaining this addon's own fallback menu for standalone use. -->
+    <function model="ir.ui.menu" name="tha_vhg_attach_balance_sheet_management_menu" eval="[[]]"/>
 </odoo>

@@ -1,6 +1,9 @@
 notes = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_notes")
 summary = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_summary")
 
+assert notes.name == "Management Balance Sheet Notes & Summary"
+assert env.ref("tha_vhg_bs_ext.action_report_vhg_balance_sheet_notes").name == notes.name
+
 for report in (notes, summary):
     options = report.get_options({})
     assert isinstance(options.get("vhg_notes_header_rows"), list), (

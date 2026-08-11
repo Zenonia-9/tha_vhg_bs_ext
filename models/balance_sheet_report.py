@@ -21,6 +21,22 @@ PPE_CODES = tuple(
 )
 
 
+class IrUiMenu(models.Model):
+    _inherit = "ir.ui.menu"
+
+    def tha_vhg_attach_balance_sheet_management_menu(self):
+        """Use the existing shared menu without making another addon a dependency."""
+        own_root = self.env.ref("tha_vhg_bs_ext.menu_vhg_management_reports")
+        existing_root = self.search([
+            ("id", "!=", own_root.id),
+            ("name", "=", "Management Reports"),
+            ("parent_id", "=", self.env.ref("account.menu_finance_configuration").id),
+        ], order="id", limit=1)
+        target_root = existing_root or own_root
+        self.env.ref("tha_vhg_bs_ext.menu_action_report_vhg_balance_sheet_notes").parent_id = target_root
+        self.env.ref("tha_vhg_bs_ext.menu_action_report_vhg_balance_sheet_summary").parent_id = target_root
+
+
 class VhgBalanceSheetReportBase(models.AbstractModel):
     _name = "tha.vhg.balance.sheet.report.base"
     _inherit = "account.report.custom.handler"
@@ -204,7 +220,7 @@ EQUITY_LIABILITY_DETAIL = (
 class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
     _name = "tha.vhg.balance.sheet.notes.report.handler"
     _description = "VHG Balance Sheet Notes Report Handler"
-    _REPORT_TITLE = "Management Balance Sheet Notes"
+    _REPORT_TITLE = "Management Balance Sheet Notes & Summary"
     _ROWS = (
         _row("assets", "ASSETS", children=("noncurrent_assets", "current_assets"), level=0, total=True),
         _row("noncurrent_assets", "Non Current Assets", children=("ppe", "intangibles", "other_noncurrent"), level=1, total=True),

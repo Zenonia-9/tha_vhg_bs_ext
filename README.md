@@ -1,6 +1,6 @@
 # VHG Balance Sheet Extension
 
-Adds workbook/source-aligned Management Balance Sheet Notes and Management
+Adds workbook/source-aligned Management Balance Sheet Notes & Summary and Management
 Balance Sheet Summary reports below Accounting > Configuration > Management Reports.
 
 The standalone addon depends only on Odoo's `account_reports`; it supplies its
