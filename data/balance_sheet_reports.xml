@@ -33,12 +33,13 @@
                 <field name="name">ASSETS</field>
                 <field name="code">VHG_BS_ASSETS_SECTION</field>
                 <field name="hierarchy_level">0</field>
-                <field name="aggregation_formula">VHG_BS_TOTAL_NCA.balance + VHG_BS_TOTAL_CA.balance</field>
+                <field name="aggregation_formula">VHG_BS_NCA_SECTION.balance + VHG_BS_CA_SECTION.balance</field>
                 <field name="children_ids">
                     <record id="bs_notes_noncurrent_section" model="account.report.line">
                         <field name="name">Non Current Assets</field>
                         <field name="code">VHG_BS_NCA_SECTION</field>
                         <field name="hierarchy_level">1</field>
+                        <field name="aggregation_formula">VHG_BS_BASE_NCA.balance + VHG_BS_OTHER_NCA_SECTION.balance</field>
                         <field name="children_ids">
                             <record id="bs_notes_ppe" model="account.report.line">
                                 <field name="name">Property, Plant and Equipment</field>
@@ -63,6 +64,7 @@
                                 <field name="name">Other Non Current Assets</field>
                                 <field name="code">VHG_BS_OTHER_NCA_SECTION</field>
                                 <field name="hierarchy_level">1</field>
+                                <field name="aggregation_formula">VHG_BS_INVESTMENT.balance + VHG_BS_CONSTRUCTION.balance</field>
                                 <field name="children_ids">
                                     <record id="bs_notes_investment" model="account.report.line">
                                         <field name="name">Investment in Associates</field>
@@ -80,22 +82,13 @@
                                     </record>
                                 </field>
                             </record>
-                            <record id="bs_notes_total_other_noncurrent" model="account.report.line">
-                                <field name="name">Total Other Non Current Assets</field>
-                                <field name="code">VHG_BS_TOTAL_OTHER_NCA</field>
-                                <field name="aggregation_formula">VHG_BS_INVESTMENT.balance + VHG_BS_CONSTRUCTION.balance</field>
-                            </record>
-                            <record id="bs_notes_total_noncurrent" model="account.report.line">
-                                <field name="name">Total Non Current Assets</field>
-                                <field name="code">VHG_BS_TOTAL_NCA</field>
-                                <field name="aggregation_formula">VHG_BS_BASE_NCA.balance + VHG_BS_TOTAL_OTHER_NCA.balance</field>
-                            </record>
                         </field>
                     </record>
                     <record id="bs_notes_current_section" model="account.report.line">
                         <field name="name">Current Assets</field>
                         <field name="code">VHG_BS_CA_SECTION</field>
                         <field name="hierarchy_level">1</field>
+                        <field name="aggregation_formula">VHG_BS_CASH.balance + VHG_BS_BANK.balance + VHG_BS_RECEIVABLES.balance + VHG_BS_INVENTORY.balance + VHG_BS_PREPAYMENTS.balance + VHG_BS_ADVANCED_TAX.balance + VHG_BS_OTHER_ASSETS.balance</field>
                         <field name="children_ids">
                             <record id="bs_notes_cash" model="account.report.line">
                                 <field name="name">Cash &amp; Cash Equivalents</field>
@@ -148,11 +141,6 @@
                             </record>
                         </field>
                     </record>
-                    <record id="bs_notes_total_current" model="account.report.line">
-                        <field name="name">Total Current Assets</field>
-                        <field name="code">VHG_BS_TOTAL_CA</field>
-                        <field name="aggregation_formula">VHG_BS_CASH.balance + VHG_BS_BANK.balance + VHG_BS_RECEIVABLES.balance + VHG_BS_INVENTORY.balance + VHG_BS_PREPAYMENTS.balance + VHG_BS_ADVANCED_TAX.balance + VHG_BS_OTHER_ASSETS.balance</field>
-                    </record>
                 </field>
             </record>
 
@@ -160,12 +148,13 @@
                 <field name="name">SHAREHOLDERS' EQUITY &amp; LIABILITIES</field>
                 <field name="code">VHG_BS_EL_SECTION</field>
                 <field name="hierarchy_level">0</field>
-                <field name="aggregation_formula">VHG_BS_TOTAL_EQUITY.balance + VHG_BS_TOTAL_LIABILITIES.balance</field>
+                <field name="aggregation_formula">VHG_BS_EQUITY_SECTION.balance + VHG_BS_LIABILITY_SECTION.balance</field>
                 <field name="children_ids">
                     <record id="bs_notes_equity_section" model="account.report.line">
                         <field name="name">SHAREHOLDERS' EQUITY</field>
                         <field name="code">VHG_BS_EQUITY_SECTION</field>
                         <field name="hierarchy_level">1</field>
+                        <field name="aggregation_formula">VHG_BS_SHARE_CAPITAL.balance + VHG_BS_DIVIDEND.balance + VHG_BS_RETAINED.balance + VHG_BS_CURRENT_PROFIT.balance</field>
                         <field name="children_ids">
                             <record id="bs_notes_share_capital" model="account.report.line">
                                 <field name="name">Issued &amp; Paid Up Share Capital</field>
@@ -197,15 +186,11 @@
                             </record>
                         </field>
                     </record>
-                    <record id="bs_notes_total_equity" model="account.report.line">
-                        <field name="name">Total SHAREHOLDERS' EQUITY</field>
-                        <field name="code">VHG_BS_TOTAL_EQUITY</field>
-                        <field name="aggregation_formula">VHG_BS_SHARE_CAPITAL.balance + VHG_BS_DIVIDEND.balance + VHG_BS_RETAINED.balance + VHG_BS_CURRENT_PROFIT.balance</field>
-                    </record>
                     <record id="bs_notes_liability_section" model="account.report.line">
                         <field name="name">LIABILITIES</field>
                         <field name="code">VHG_BS_LIABILITY_SECTION</field>
                         <field name="hierarchy_level">1</field>
+                        <field name="aggregation_formula">VHG_BS_NCL.balance + VHG_BS_CL_SECTION.balance</field>
                         <field name="children_ids">
                             <record id="bs_notes_noncurrent_liability" model="account.report.line">
                                 <field name="name">NON CURRENT LIABILITIES</field>
@@ -218,6 +203,7 @@
                                 <field name="name">CURRENT LIABILITIES</field>
                                 <field name="code">VHG_BS_CL_SECTION</field>
                                 <field name="hierarchy_level">1</field>
+                                <field name="aggregation_formula">VHG_BS_TRADE_PAYABLES.balance + VHG_BS_DEFERRED.balance + VHG_BS_TAX_PAYABLE.balance + VHG_BS_OTHER_PAYABLE.balance</field>
                                 <field name="children_ids">
                                     <record id="bs_notes_trade_payables" model="account.report.line">
                                         <field name="name">Trade &amp; Other Payables</field>
@@ -249,17 +235,7 @@
                                     </record>
                                 </field>
                             </record>
-                            <record id="bs_notes_total_current_liability" model="account.report.line">
-                                <field name="name">Total CURRENT LIABILITIES</field>
-                                <field name="code">VHG_BS_TOTAL_CL</field>
-                                <field name="aggregation_formula">VHG_BS_TRADE_PAYABLES.balance + VHG_BS_DEFERRED.balance + VHG_BS_TAX_PAYABLE.balance + VHG_BS_OTHER_PAYABLE.balance</field>
-                            </record>
                         </field>
-                    </record>
-                    <record id="bs_notes_total_liabilities" model="account.report.line">
-                        <field name="name">Total LIABILITIES</field>
-                        <field name="code">VHG_BS_TOTAL_LIABILITIES</field>
-                        <field name="aggregation_formula">VHG_BS_NCL.balance + VHG_BS_TOTAL_CL.balance</field>
                     </record>
                 </field>
             </record>
@@ -276,7 +252,7 @@
     </record>
 
     <delete model="account.report.line"
-            search="[('report_id', '=', ref('tha_vhg_bs_ext.report_vhg_balance_sheet_notes')), ('code', 'in', ('VHG_BS_TOTAL_ASSETS', 'VHG_BS_TOTAL_EL'))]"/>
+            search="[('report_id', '=', ref('tha_vhg_bs_ext.report_vhg_balance_sheet_notes')), ('code', 'in', ('VHG_BS_TOTAL_OTHER_NCA', 'VHG_BS_TOTAL_NCA', 'VHG_BS_TOTAL_CA', 'VHG_BS_TOTAL_EQUITY', 'VHG_BS_TOTAL_CL', 'VHG_BS_TOTAL_LIABILITIES', 'VHG_BS_TOTAL_ASSETS', 'VHG_BS_TOTAL_EL'))]"/>
 
     <record id="report_vhg_balance_sheet_summary" model="account.report">
         <field name="name">Management Balance Sheet Summary</field>

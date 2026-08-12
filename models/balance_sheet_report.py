@@ -234,11 +234,9 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
     def _custom_line_postprocessor(self, report, options, lines):
         lines = super()._custom_line_postprocessor(report, options, lines)
         bold_codes = {
-            "VHG_BS_ASSETS_SECTION", "VHG_BS_NCA_SECTION", "VHG_BS_OTHER_NCA_SECTION",
-            "VHG_BS_TOTAL_OTHER_NCA", "VHG_BS_TOTAL_NCA", "VHG_BS_CA_SECTION",
-            "VHG_BS_TOTAL_CA", "VHG_BS_EL_SECTION",
-            "VHG_BS_EQUITY_SECTION", "VHG_BS_TOTAL_EQUITY", "VHG_BS_LIABILITY_SECTION",
-            "VHG_BS_CL_SECTION", "VHG_BS_TOTAL_CL", "VHG_BS_TOTAL_LIABILITIES",
+            "VHG_BS_ASSETS_SECTION", "VHG_BS_NCA_SECTION", "VHG_BS_BASE_NCA",
+            "VHG_BS_OTHER_NCA_SECTION", "VHG_BS_CA_SECTION", "VHG_BS_EL_SECTION",
+            "VHG_BS_EQUITY_SECTION", "VHG_BS_LIABILITY_SECTION", "VHG_BS_CL_SECTION",
         }
         section_codes = {"VHG_BS_ASSETS_SECTION", "VHG_BS_EL_SECTION"}
         report_lines = self.env["account.report.line"].search([("report_id", "=", report.id)])

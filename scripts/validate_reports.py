@@ -54,14 +54,24 @@ if pnl_notes and not company.totals_below_sections:
 assert notes.line_ids, "Notes must use native account.report.line records"
 all_notes_lines = env["account.report.line"].search([("report_id", "=", notes.id)])
 by_code = {line.code: line for line in all_notes_lines}
-for code in ("VHG_BS_ASSETS_SECTION", "VHG_BS_TOTAL_EQUITY", "VHG_BS_EL_SECTION", "VHG_BS_OFF_BALANCE"):
-    assert code in by_code, f"Missing native total line: {code}"
+for code in (
+    "VHG_BS_ASSETS_SECTION", "VHG_BS_NCA_SECTION", "VHG_BS_BASE_NCA",
+    "VHG_BS_OTHER_NCA_SECTION", "VHG_BS_CA_SECTION", "VHG_BS_EL_SECTION",
+    "VHG_BS_EQUITY_SECTION", "VHG_BS_LIABILITY_SECTION", "VHG_BS_CL_SECTION",
+    "VHG_BS_OFF_BALANCE",
+):
+    assert code in by_code, f"Missing native formula/group line: {code}"
 for code in ("VHG_BS_PPE", "VHG_BS_CASH", "VHG_BS_TRADE_PAYABLES"):
     assert by_code[code].foldable and by_code[code].groupby == "account_id"
 for code in ("VHG_BS_ASSETS_SECTION", "VHG_BS_EL_SECTION"):
     assert not by_code[code].foldable
 for code in ("VHG_BS_NCA_SECTION", "VHG_BS_CA_SECTION", "VHG_BS_EQUITY_SECTION", "VHG_BS_LIABILITY_SECTION", "VHG_BS_CL_SECTION"):
     assert by_code[code].hierarchy_level == 1
-assert "VHG_BS_TOTAL_ASSETS" not in by_code
-assert "VHG_BS_TOTAL_EL" not in by_code
+obsolete_total_codes = {
+    "VHG_BS_TOTAL_OTHER_NCA", "VHG_BS_TOTAL_NCA", "VHG_BS_TOTAL_CA",
+    "VHG_BS_TOTAL_EQUITY", "VHG_BS_TOTAL_CL", "VHG_BS_TOTAL_LIABILITIES",
+    "VHG_BS_TOTAL_ASSETS", "VHG_BS_TOTAL_EL",
+}
+assert not obsolete_total_codes.intersection(by_code)
+assert by_code["VHG_BS_BASE_NCA"].name == "Total Non Current Assets"
 print(f"Notes native definitions: {len(all_notes_lines)} lines")
