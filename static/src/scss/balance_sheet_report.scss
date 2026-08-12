@@ -8,4 +8,8 @@
     td.line_cell[data-expression_label="balance"] > .wrapper {
         justify-content: flex-end !important;
     }
+
+    tr.o_vhg_bs_section > td {
+        background-color: var(--AccountReport-line-background-color, rgba(128, 128, 128, 0.18));
+    }
 }

@@ -224,6 +224,39 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
     _name = "tha.vhg.balance.sheet.notes.report.handler"
     _description = "VHG Balance Sheet Notes Report Handler"
     _REPORT_TITLE = "Management Balance Sheet Notes & Summary"
+
+    def _dynamic_lines_generator(
+        self, report, options, all_column_groups_expression_totals, warnings=None,
+    ):
+        """The Notes report is defined by native account.report.line records."""
+        return []
+
+    def _custom_line_postprocessor(self, report, options, lines):
+        lines = super()._custom_line_postprocessor(report, options, lines)
+        # Native groupby expressions create a synthetic "Total ..." row even
+        # while folded. The VHG statement displays only the named statement
+        # line and its accounts when deliberately unfolded.
+        lines = [line for line in lines if "|total~~" not in line["id"]]
+        bold_codes = {
+            "VHG_BS_ASSETS_SECTION", "VHG_BS_NCA_SECTION", "VHG_BS_OTHER_NCA_SECTION",
+            "VHG_BS_TOTAL_OTHER_NCA", "VHG_BS_TOTAL_NCA", "VHG_BS_CA_SECTION",
+            "VHG_BS_TOTAL_CA", "VHG_BS_TOTAL_ASSETS", "VHG_BS_EL_SECTION",
+            "VHG_BS_EQUITY_SECTION", "VHG_BS_TOTAL_EQUITY", "VHG_BS_LIABILITY_SECTION",
+            "VHG_BS_CL_SECTION", "VHG_BS_TOTAL_CL", "VHG_BS_TOTAL_LIABILITIES",
+            "VHG_BS_TOTAL_EL",
+        }
+        section_codes = {"VHG_BS_ASSETS_SECTION", "VHG_BS_EL_SECTION"}
+        report_lines = self.env["account.report.line"].search([("report_id", "=", report.id)])
+        code_by_id = {line.id: line.code for line in report_lines}
+        for line in lines:
+            _model, record_id = report._get_model_info_from_id(line["id"])
+            code = code_by_id.get(record_id)
+            if code in bold_codes:
+                line["class"] = f"{line.get('class', '')} fw-bold".strip()
+            if code in section_codes:
+                line["class"] = f"{line.get('class', '')} o_vhg_bs_section".strip()
+        return lines
+
     _ROWS = (
         _row("assets", "ASSETS", children=("noncurrent_assets", "current_assets"), level=0, total=True),
         _row("noncurrent_assets", "Non Current Assets", children=("ppe", "intangibles", "other_noncurrent"), level=1, total=True),

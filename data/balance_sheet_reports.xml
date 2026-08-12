@@ -2,17 +2,266 @@
 <odoo>
     <record id="report_vhg_balance_sheet_notes" model="account.report">
         <field name="name">Management Balance Sheet Notes &amp; Summary</field>
+        <field name="filter_analytic_groupby" eval="True"/>
         <field name="filter_unfold_all" eval="True"/>
         <field name="filter_date_range" eval="False"/>
         <field name="filter_journals" eval="True"/>
         <field name="filter_period_comparison" eval="True"/>
         <field name="filter_multi_company">selector</field>
+        <field name="allow_account_audit_status_on_lines" eval="True"/>
         <field name="default_opening_date_filter">today</field>
         <field name="custom_handler_model_id" ref="model_tha_vhg_balance_sheet_notes_report_handler"/>
         <field name="column_ids">
             <record id="report_vhg_balance_sheet_notes_balance" model="account.report.column">
                 <field name="name">Amount</field>
                 <field name="expression_label">balance</field>
+            </record>
+        </field>
+        <field name="line_ids">
+            <record id="bs_notes_assets" model="account.report.line">
+                <field name="name">ASSETS</field>
+                <field name="code">VHG_BS_ASSETS_SECTION</field>
+                <field name="hierarchy_level">0</field>
+                <field name="children_ids">
+                    <record id="bs_notes_noncurrent_section" model="account.report.line">
+                        <field name="name">Non Current Assets</field>
+                        <field name="code">VHG_BS_NCA_SECTION</field>
+                        <field name="children_ids">
+                            <record id="bs_notes_ppe" model="account.report.line">
+                                <field name="name">Property, Plant and Equipment</field>
+                                <field name="code">VHG_BS_PPE</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.account_type', '=', 'asset_fixed'), ('account_id.name', 'not ilike', 'Intangible')])</field>
+                            </record>
+                            <record id="bs_notes_intangible" model="account.report.line">
+                                <field name="name">Intangible Assets</field>
+                                <field name="code">VHG_BS_INTANGIBLE</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.name', 'in', ('Intangible Assets', 'Goodwill', 'Intangible Assets- Accumulated  Amortization'))])</field>
+                            </record>
+                            <record id="bs_notes_total_base_noncurrent" model="account.report.line">
+                                <field name="name">Total Non Current Assets</field>
+                                <field name="code">VHG_BS_BASE_NCA</field>
+                                <field name="aggregation_formula">VHG_BS_PPE.balance + VHG_BS_INTANGIBLE.balance</field>
+                            </record>
+                            <record id="bs_notes_other_noncurrent_section" model="account.report.line">
+                                <field name="name">Other Non Current Assets</field>
+                                <field name="code">VHG_BS_OTHER_NCA_SECTION</field>
+                                <field name="children_ids">
+                                    <record id="bs_notes_investment" model="account.report.line">
+                                        <field name="name">Investment in Associates</field>
+                                        <field name="code">VHG_BS_INVESTMENT</field>
+                                        <field name="groupby">account_id</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="domain_formula">sum([('account_id.account_type', '=', 'asset_non_current'), ('account_id.name', 'not ilike', 'Construction'), ('account_id.name', 'not ilike', 'VTR Extension')])</field>
+                                    </record>
+                                    <record id="bs_notes_construction" model="account.report.line">
+                                        <field name="name">Construction</field>
+                                        <field name="code">VHG_BS_CONSTRUCTION</field>
+                                        <field name="groupby">account_id</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="domain_formula">sum(['|', ('account_id.name', 'ilike', 'Construction'), ('account_id.name', 'ilike', 'VTR Extension')])</field>
+                                    </record>
+                                </field>
+                            </record>
+                            <record id="bs_notes_total_other_noncurrent" model="account.report.line">
+                                <field name="name">Total Other Non Current Assets</field>
+                                <field name="code">VHG_BS_TOTAL_OTHER_NCA</field>
+                                <field name="aggregation_formula">VHG_BS_INVESTMENT.balance + VHG_BS_CONSTRUCTION.balance</field>
+                            </record>
+                            <record id="bs_notes_total_noncurrent" model="account.report.line">
+                                <field name="name">Total Non Current Assets</field>
+                                <field name="code">VHG_BS_TOTAL_NCA</field>
+                                <field name="aggregation_formula">VHG_BS_BASE_NCA.balance + VHG_BS_TOTAL_OTHER_NCA.balance</field>
+                            </record>
+                        </field>
+                    </record>
+                    <record id="bs_notes_current_section" model="account.report.line">
+                        <field name="name">Current Assets</field>
+                        <field name="code">VHG_BS_CA_SECTION</field>
+                        <field name="children_ids">
+                            <record id="bs_notes_cash" model="account.report.line">
+                                <field name="name">Cash &amp; Cash Equivalents</field>
+                                <field name="code">VHG_BS_CASH</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.account_type', '=', 'asset_cash'), ('account_id.name', 'ilike', 'Cash in hand')])</field>
+                            </record>
+                            <record id="bs_notes_bank" model="account.report.line">
+                                <field name="name">Cash at Bank</field>
+                                <field name="code">VHG_BS_BANK</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.account_type', '=', 'asset_cash'), ('account_id.name', 'not ilike', 'Cash in hand')])</field>
+                            </record>
+                            <record id="bs_notes_receivables" model="account.report.line">
+                                <field name="name">Trade &amp; Other Receivables</field>
+                                <field name="code">VHG_BS_RECEIVABLES</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.account_type', '=', 'asset_receivable')])</field>
+                            </record>
+                            <record id="bs_notes_inventory" model="account.report.line">
+                                <field name="name">Inventory</field>
+                                <field name="code">VHG_BS_INVENTORY</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.account_type', '=', 'asset_current'), ('account_id.name', 'in', ('Pharmacy', 'Medical Supply', 'General Supply', 'Housekeeping Inventory', 'HSD &amp; Oil', 'Construction Materials', 'Goods In Transit'))])</field>
+                            </record>
+                            <record id="bs_notes_prepayments" model="account.report.line">
+                                <field name="name">Prepaid and Advance Payments</field>
+                                <field name="code">VHG_BS_PREPAYMENTS</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.name', 'in', ('Advance payment', 'Prepaid Expenses', 'Deferred Expenses'))])</field>
+                            </record>
+                            <record id="bs_notes_advanced_tax" model="account.report.line">
+                                <field name="name">Advanced Tax</field>
+                                <field name="code">VHG_BS_ADVANCED_TAX</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.name', 'ilike', 'Advance'), ('account_id.name', 'ilike', 'Tax')])</field>
+                            </record>
+                            <record id="bs_notes_other_assets" model="account.report.line">
+                                <field name="name">Others</field>
+                                <field name="code">VHG_BS_OTHER_ASSETS</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">sum([('account_id.name', 'in', ('Deposit payment',))])</field>
+                            </record>
+                        </field>
+                    </record>
+                    <record id="bs_notes_total_current" model="account.report.line">
+                        <field name="name">Total Current Assets</field>
+                        <field name="code">VHG_BS_TOTAL_CA</field>
+                        <field name="aggregation_formula">VHG_BS_CASH.balance + VHG_BS_BANK.balance + VHG_BS_RECEIVABLES.balance + VHG_BS_INVENTORY.balance + VHG_BS_PREPAYMENTS.balance + VHG_BS_ADVANCED_TAX.balance + VHG_BS_OTHER_ASSETS.balance</field>
+                    </record>
+                    <record id="bs_notes_total_assets" model="account.report.line">
+                        <field name="name">Total ASSETS</field>
+                        <field name="code">VHG_BS_TOTAL_ASSETS</field>
+                        <field name="aggregation_formula">VHG_BS_TOTAL_NCA.balance + VHG_BS_TOTAL_CA.balance</field>
+                    </record>
+                </field>
+            </record>
+
+            <record id="bs_notes_equity_liability_section" model="account.report.line">
+                <field name="name">SHAREHOLDERS' EQUITY &amp; LIABILITIES</field>
+                <field name="code">VHG_BS_EL_SECTION</field>
+                <field name="hierarchy_level">0</field>
+                <field name="children_ids">
+                    <record id="bs_notes_equity_section" model="account.report.line">
+                        <field name="name">SHAREHOLDERS' EQUITY</field>
+                        <field name="code">VHG_BS_EQUITY_SECTION</field>
+                        <field name="children_ids">
+                            <record id="bs_notes_share_capital" model="account.report.line">
+                                <field name="name">Issued &amp; Paid Up Share Capital</field>
+                                <field name="code">VHG_BS_SHARE_CAPITAL</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">-sum([('account_id.name', 'in', ('Ordinary Share', 'Preference Share', 'Premium', 'Advance Capital'))])</field>
+                            </record>
+                            <record id="bs_notes_dividend" model="account.report.line">
+                                <field name="name">Dividend</field>
+                                <field name="code">VHG_BS_DIVIDEND</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">-sum([('account_id.name', 'in', ('Dividend Payable', 'Dividend Paid'))])</field>
+                            </record>
+                            <record id="bs_notes_retained" model="account.report.line">
+                                <field name="name">Retained Earning</field>
+                                <field name="code">VHG_BS_RETAINED</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">-sum([('account_id.name', 'in', ('Retained Earnings', 'Non Controlling Interest'))])</field>
+                            </record>
+                            <record id="bs_notes_current_profit" model="account.report.line">
+                                <field name="name">Current year's profit or loss</field>
+                                <field name="code">VHG_BS_CURRENT_PROFIT</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">-sum([('account_id.account_type', 'in', ('income', 'income_other', 'expense_direct_cost', 'expense', 'expense_depreciation'))])</field>
+                            </record>
+                        </field>
+                    </record>
+                    <record id="bs_notes_total_equity" model="account.report.line">
+                        <field name="name">Total SHAREHOLDERS' EQUITY</field>
+                        <field name="code">VHG_BS_TOTAL_EQUITY</field>
+                        <field name="aggregation_formula">VHG_BS_SHARE_CAPITAL.balance + VHG_BS_DIVIDEND.balance + VHG_BS_RETAINED.balance + VHG_BS_CURRENT_PROFIT.balance</field>
+                    </record>
+                    <record id="bs_notes_liability_section" model="account.report.line">
+                        <field name="name">LIABILITIES</field>
+                        <field name="code">VHG_BS_LIABILITY_SECTION</field>
+                        <field name="children_ids">
+                            <record id="bs_notes_noncurrent_liability" model="account.report.line">
+                                <field name="name">NON CURRENT LIABILITIES</field>
+                                <field name="code">VHG_BS_NCL</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">-sum([('account_id.account_type', '=', 'liability_non_current')])</field>
+                            </record>
+                            <record id="bs_notes_current_liability_section" model="account.report.line">
+                                <field name="name">CURRENT LIABILITIES</field>
+                                <field name="code">VHG_BS_CL_SECTION</field>
+                                <field name="children_ids">
+                                    <record id="bs_notes_trade_payables" model="account.report.line">
+                                        <field name="name">Trade &amp; Other Payables</field>
+                                        <field name="code">VHG_BS_TRADE_PAYABLES</field>
+                                        <field name="groupby">account_id</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="domain_formula">-sum([('account_id.account_type', '=', 'liability_payable')])</field>
+                                    </record>
+                                    <record id="bs_notes_deferred_income" model="account.report.line">
+                                        <field name="name">Advance Receipt &amp; Deferred Income</field>
+                                        <field name="code">VHG_BS_DEFERRED</field>
+                                        <field name="groupby">account_id</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="domain_formula">-sum([('account_id.name', 'in', ('Deposit', 'Advance receive from customer', 'Deferred Income', 'Deferred Hospital Income', 'Advance Receipt - Agreement Center'))])</field>
+                                    </record>
+                                    <record id="bs_notes_tax_payable" model="account.report.line">
+                                        <field name="name">Current Tax Payable</field>
+                                        <field name="code">VHG_BS_TAX_PAYABLE</field>
+                                        <field name="groupby">account_id</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="domain_formula">-sum([('account_id.name', 'ilike', 'Tax'), ('account_id.account_type', 'in', ('liability_current', 'liability_payable'))])</field>
+                                    </record>
+                                    <record id="bs_notes_other_payable" model="account.report.line">
+                                        <field name="name">Other Current Payable</field>
+                                        <field name="code">VHG_BS_OTHER_PAYABLE</field>
+                                        <field name="groupby">account_id</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="domain_formula">-sum([('account_id.account_type', '=', 'liability_current'), ('account_id.name', 'not ilike', 'Tax'), ('account_id.name', 'not ilike', 'Deferred'), ('account_id.name', 'not ilike', 'Advance receive')])</field>
+                                    </record>
+                                </field>
+                            </record>
+                            <record id="bs_notes_total_current_liability" model="account.report.line">
+                                <field name="name">Total CURRENT LIABILITIES</field>
+                                <field name="code">VHG_BS_TOTAL_CL</field>
+                                <field name="aggregation_formula">VHG_BS_TRADE_PAYABLES.balance + VHG_BS_DEFERRED.balance + VHG_BS_TAX_PAYABLE.balance + VHG_BS_OTHER_PAYABLE.balance</field>
+                            </record>
+                        </field>
+                    </record>
+                    <record id="bs_notes_total_liabilities" model="account.report.line">
+                        <field name="name">Total LIABILITIES</field>
+                        <field name="code">VHG_BS_TOTAL_LIABILITIES</field>
+                        <field name="aggregation_formula">VHG_BS_NCL.balance + VHG_BS_TOTAL_CL.balance</field>
+                    </record>
+                    <record id="bs_notes_total_equity_liabilities" model="account.report.line">
+                        <field name="name">Total SHAREHOLDERS' EQUITY &amp; LIABILITIES</field>
+                        <field name="code">VHG_BS_TOTAL_EL</field>
+                        <field name="aggregation_formula">VHG_BS_TOTAL_EQUITY.balance + VHG_BS_TOTAL_LIABILITIES.balance</field>
+                    </record>
+                </field>
+            </record>
+            <record id="bs_notes_off_balance" model="account.report.line">
+                <field name="name">OFF BALANCE SHEET ACCOUNTS</field>
+                <field name="code">VHG_BS_OFF_BALANCE</field>
+                <field name="hierarchy_level">0</field>
+                <field name="groupby">account_id</field>
+                <field name="foldable" eval="True"/>
+                <field name="hide_if_zero" eval="True"/>
+                <field name="domain_formula">-sum([('account_id.account_type', '=', 'off_balance')])</field>
             </record>
         </field>
     </record>

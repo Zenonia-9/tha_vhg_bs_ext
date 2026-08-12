@@ -14,10 +14,22 @@ for report in (notes, summary):
     names = [line["name"] for line in lines]
     assert "ASSETS" in names
     assert "SHAREHOLDERS' EQUITY & LIABILITIES" in names
-    assert "OFF BALANCE SHEET ACCOUNTS" in names
+    if report == summary:
+        assert "OFF BALANCE SHEET ACCOUNTS" in names
     print(f"{report.name}: {len(lines)} lines, {len(options['columns'])} columns")
 
 notes_options = notes.get_options({"unfold_all": True})
 notes_lines = notes._get_lines(notes_options)
 assert any(line.get("parent_id") for line in notes_lines), "Notes: mapped accounts did not unfold"
 print(f"Notes unfolded: {len(notes_lines)} lines")
+
+assert notes.line_ids, "Notes must use native account.report.line records"
+all_notes_lines = env["account.report.line"].search([("report_id", "=", notes.id)])
+by_code = {line.code: line for line in all_notes_lines}
+for code in ("VHG_BS_TOTAL_ASSETS", "VHG_BS_TOTAL_EQUITY", "VHG_BS_TOTAL_EL", "VHG_BS_OFF_BALANCE"):
+    assert code in by_code, f"Missing native total line: {code}"
+for code in ("VHG_BS_PPE", "VHG_BS_CASH", "VHG_BS_TRADE_PAYABLES"):
+    assert by_code[code].foldable and by_code[code].groupby == "account_id"
+for code in ("VHG_BS_ASSETS_SECTION", "VHG_BS_TOTAL_ASSETS", "VHG_BS_TOTAL_EL"):
+    assert not by_code[code].foldable
+print(f"Notes native definitions: {len(all_notes_lines)} lines")
