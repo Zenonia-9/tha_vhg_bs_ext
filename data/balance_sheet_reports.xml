@@ -154,7 +154,7 @@
                         <field name="name">SHAREHOLDERS' EQUITY</field>
                         <field name="code">VHG_BS_EQUITY_SECTION</field>
                         <field name="hierarchy_level">1</field>
-                        <field name="aggregation_formula">VHG_BS_SHARE_CAPITAL.balance + VHG_BS_DIVIDEND.balance + VHG_BS_RETAINED.balance + VHG_BS_CURRENT_PROFIT.balance</field>
+                        <field name="aggregation_formula">VHG_BS_SHARE_CAPITAL.balance + VHG_BS_DIVIDEND.balance + RET_EARN.balance + Cur_Yr_PL.balance</field>
                         <field name="children_ids">
                             <record id="bs_notes_share_capital" model="account.report.line">
                                 <field name="name">Issued &amp; Paid Up Share Capital</field>
@@ -172,17 +172,96 @@
                             </record>
                             <record id="bs_notes_retained" model="account.report.line">
                                 <field name="name">Retained Earning</field>
-                                <field name="code">VHG_BS_RETAINED</field>
-                                <field name="groupby">account_id</field>
+                                <field name="code">RET_EARN</field>
+                                <field name="hierarchy_level">3</field>
+                                <field name="groupby" eval="False"/>
                                 <field name="foldable" eval="True"/>
-                                <field name="domain_formula">-sum([('account_id.code', 'in', ['410000', '410020'])])</field>
+                                <field name="hide_if_zero" eval="True"/>
+                                <field name="aggregation_formula">RETAINED_EARNING_TOTAL.balance + UNAFFECTED_EARNINGS_COPY.balance + PREV_YEAR_EARNINGS_COPY.balance</field>
+                                <field name="children_ids">
+                                    <record id="bs_notes_retained_410000" model="account.report.line">
+                                        <field name="name">410000 Retained Earning</field>
+                                        <field name="code">RETAINED_EARNING_TOTAL</field>
+                                        <field name="hierarchy_level">5</field>
+                                        <field name="groupby">account_id</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="hide_if_zero" eval="True"/>
+                                        <field name="domain_formula">-sum([('account_id.code', 'in', ['410000', '410020'])])</field>
+                                    </record>
+                                    <record id="bs_notes_unallocated_earnings" model="account.report.line">
+                                        <field name="name">Unallocated Earnings</field>
+                                        <field name="code">UNAFFECTED_EARNINGS_COPY</field>
+                                        <field name="hierarchy_level">5</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="hide_if_zero" eval="True"/>
+                                        <field name="aggregation_formula">CURR_YEAR_EARNINGS_COPY.balance + PREV_YEAR_EARNINGS_COPY.balance</field>
+                                    </record>
+                                    <record id="bs_notes_previous_unallocated_earnings" model="account.report.line">
+                                        <field name="name">Previous Years Unallocated Earnings</field>
+                                        <field name="code">PREV_YEAR_EARNINGS_COPY</field>
+                                        <field name="hierarchy_level">5</field>
+                                        <field name="expression_ids">
+                                            <record id="bs_notes_previous_unallocated_allocated" model="account.report.expression">
+                                                <field name="label">allocated_earnings</field>
+                                                <field name="engine">domain</field>
+                                                <field name="formula" eval="[('account_id.account_type', '=', 'equity_unaffected')]"/>
+                                                <field name="subformula">-sum</field>
+                                                <field name="date_scope">from_beginning</field>
+                                            </record>
+                                            <record id="bs_notes_previous_unallocated_domain" model="account.report.expression">
+                                                <field name="label">balance_domain</field>
+                                                <field name="engine">domain</field>
+                                                <field name="formula" eval="[('account_id.account_type', 'in', ('income', 'income_other', 'expense_direct_cost', 'expense', 'expense_depreciation'))]"/>
+                                                <field name="subformula">-sum</field>
+                                                <field name="date_scope">from_beginning</field>
+                                            </record>
+                                            <record id="bs_notes_previous_unallocated_balance" model="account.report.expression">
+                                                <field name="label">balance</field>
+                                                <field name="engine">aggregation</field>
+                                                <field name="formula">PREV_YEAR_EARNINGS_COPY.balance_domain + PREV_YEAR_EARNINGS_COPY.allocated_earnings - CURR_YEAR_EARNINGS_COPY.balance</field>
+                                            </record>
+                                        </field>
+                                    </record>
+                                </field>
                             </record>
                             <record id="bs_notes_current_profit" model="account.report.line">
                                 <field name="name">Current year's profit or loss</field>
-                                <field name="code">VHG_BS_CURRENT_PROFIT</field>
-                                <field name="groupby">account_id</field>
+                                <field name="code">Cur_Yr_PL</field>
+                                <field name="hierarchy_level">3</field>
+                                <field name="groupby" eval="False"/>
                                 <field name="foldable" eval="True"/>
-                                <field name="domain_formula">-sum([('account_id.account_type', 'in', ('income', 'income_other', 'expense_direct_cost', 'expense', 'expense_depreciation'))])</field>
+                                <field name="hide_if_zero" eval="True"/>
+                                <field name="aggregation_formula">CURR_YEAR_EARNINGS_COPY.balance</field>
+                                <field name="children_ids">
+                                    <record id="bs_notes_current_profit_410010" model="account.report.line">
+                                        <field name="name">410010 Current year's profit or loss</field>
+                                        <field name="code">CURR_YEAR_EARNINGS_COPY</field>
+                                        <field name="hierarchy_level">5</field>
+                                        <field name="foldable" eval="True"/>
+                                        <field name="hide_if_zero" eval="True"/>
+                                        <field name="expression_ids">
+                                            <record id="bs_notes_current_profit_pnl" model="account.report.expression">
+                                                <field name="label">pnl</field>
+                                                <field name="engine">aggregation</field>
+                                                <field name="formula">NEP.balance</field>
+                                                <field name="date_scope">from_fiscalyear</field>
+                                                <field name="subformula">cross_report(account_reports.profit_and_loss)</field>
+                                            </record>
+                                            <record id="bs_notes_current_profit_alloc" model="account.report.expression">
+                                                <field name="label">alloc</field>
+                                                <field name="engine">domain</field>
+                                                <field name="formula" eval="[('account_id.account_type', '=', 'equity_unaffected')]"/>
+                                                <field name="date_scope">from_fiscalyear</field>
+                                                <field name="subformula">-sum</field>
+                                            </record>
+                                            <record id="bs_notes_current_profit_balance" model="account.report.expression">
+                                                <field name="label">balance</field>
+                                                <field name="engine">aggregation</field>
+                                                <field name="formula">PREV_YEAR_EARNINGS_COPY.balance_domain + PREV_YEAR_EARNINGS_COPY.allocated_earnings</field>
+                                            </record>
+                                        </field>
+                                    </record>
+                                </field>
                             </record>
                         </field>
                     </record>

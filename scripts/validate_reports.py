@@ -89,7 +89,7 @@ mapped_codes = {
     "VHG_BS_ADVANCED_TAX": "150110",
     "VHG_BS_SHARE_CAPITAL": "400010",
     "VHG_BS_DIVIDEND": "400070",
-    "VHG_BS_RETAINED": "410000",
+    "RETAINED_EARNING_TOTAL": "410000",
     "VHG_BS_TRADE_PAYABLES": "310010",
     "VHG_BS_DEFERRED": "310205",
     "VHG_BS_TAX_PAYABLE": "310255",
@@ -105,6 +105,27 @@ for code, account_code in mapped_codes.items():
 assert "account_id.code" in by_code["VHG_BS_OTHER_ASSETS"].expression_ids.filtered(
     lambda expression: expression.engine == "domain"
 ).formula
+
+assert by_code["RET_EARN"].expression_ids.filtered(lambda expression: expression.label == "balance").formula == (
+    "RETAINED_EARNING_TOTAL.balance + UNAFFECTED_EARNINGS_COPY.balance + "
+    "PREV_YEAR_EARNINGS_COPY.balance"
+)
+assert by_code["Cur_Yr_PL"].expression_ids.filtered(lambda expression: expression.label == "balance").formula == "CURR_YEAR_EARNINGS_COPY.balance"
+assert by_code["UNAFFECTED_EARNINGS_COPY"].expression_ids.filtered(lambda expression: expression.label == "balance").formula == (
+    "CURR_YEAR_EARNINGS_COPY.balance + PREV_YEAR_EARNINGS_COPY.balance"
+)
+assert by_code["RETAINED_EARNING_TOTAL"].parent_id == by_code["RET_EARN"]
+assert by_code["UNAFFECTED_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
+assert by_code["PREV_YEAR_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
+assert by_code["CURR_YEAR_EARNINGS_COPY"].parent_id == by_code["Cur_Yr_PL"]
+current_expressions = {expression.label: expression for expression in by_code["CURR_YEAR_EARNINGS_COPY"].expression_ids}
+assert current_expressions["pnl"].subformula == "cross_report(account_reports.profit_and_loss)"
+assert current_expressions["pnl"].date_scope == "from_fiscalyear"
+assert current_expressions["alloc"].date_scope == "from_fiscalyear"
+previous_expressions = {expression.label: expression for expression in by_code["PREV_YEAR_EARNINGS_COPY"].expression_ids}
+assert previous_expressions["allocated_earnings"].date_scope == "from_beginning"
+assert previous_expressions["balance_domain"].date_scope == "from_beginning"
+print("Retained earnings and current-year P&L source formulas: OK")
 
 ppe_line = next(line for line in notes._get_lines(notes.get_options({})) if line["name"] == "Property, Plant and Equipment")
 assert ppe_line["expand_function"] == "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
