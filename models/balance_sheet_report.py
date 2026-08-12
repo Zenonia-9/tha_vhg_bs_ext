@@ -7,9 +7,10 @@ from odoo import models
 from odoo.tools import SQL
 
 
-def _row(key, name, *, codes=(), children=(), level=1, total=False, unfold=True):
+def _row(key, name, *, codes=(), account_names=(), children=(), level=1, total=False, unfold=True):
     return {
         "key": key, "name": name, "codes": tuple(codes), "children": tuple(children),
+        "account_names": tuple(account_names),
         "level": level, "total": total, "unfold": unfold,
     }
 
@@ -62,12 +63,14 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
         })
 
     @staticmethod
-    def _matches(code, specs):
-        return any(
+    def _matches(account, row):
+        code = account["code"]
+        code_matches = bool(code) and any(
             code == spec if isinstance(spec, str)
             else spec[0] <= code <= spec[1]
-            for spec in specs
+            for spec in row["codes"]
         )
+        return code_matches or account["name"] in row["account_names"]
 
     def _query_accounts(self, report, options):
         result = {}
@@ -110,7 +113,7 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
             for group_key, accounts in account_data.items():
                 values[row["key"]][group_key] = sum(
                     account["balance"] for account in accounts.values()
-                    if self._matches(account["code"], row["codes"])
+                    if self._matches(account, row)
                 )
 
         def aggregate(key, group_key):
@@ -161,7 +164,7 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
         account_data = self._query_accounts(report, options)
         account_ids = sorted({
             account_id for accounts in account_data.values() for account_id, account in accounts.items()
-            if self._matches(account["code"], row["codes"])
+            if self._matches(account, row)
         }, key=lambda account_id: next(iter(account_data.values()))[account_id]["code"])
         lines = []
         for account_id in account_ids:
@@ -179,13 +182,13 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
 
 
 ASSET_DETAIL = (
-    _row("ppe", "Property, Plant and Equipment", codes=PPE_CODES, level=2),
-    _row("intangibles", "Intangible Assets", codes=("230010", "230015", "230020"), level=2),
-    _row("investment_associates", "Investment in Associates", codes=(("240010", "240050"),), level=3),
-    _row("construction", "Construction", codes=("140120", ("240055", "240085"), "140210"), level=3),
-    _row("cash", "Cash & Cash Equivalents", codes=("110110", "110111", "110112", "110120", "110130", "110140", "110190"), level=2),
-    _row("bank", "Cash at Bank", codes=(("121010", "128050"), "131011"), level=2),
-    _row("recv_external_personal", "Receivable-External-Personal", codes=(("130010", "130099"),), level=3),
+    _row("ppe", "Property, Plant and Equipment", codes=PPE_CODES, account_names=("Building & infrastructure development - gross",), level=2),
+    _row("intangibles", "Intangible Assets", codes=("230010", "230015", "230020"), account_names=("Intangible Assets",), level=2),
+    _row("investment_associates", "Investment in Associates", codes=(("240010", "240050"),), account_names=("Investment in (Innovative Diagnostics)-Subsidiary 80%",), level=3),
+    _row("construction", "Construction", codes=("140120", ("240055", "240085"), "140210"), account_names=("VTR Extension-Construction-Material",), level=3),
+    _row("cash", "Cash & Cash Equivalents", codes=("110110", "110111", "110112", "110120", "110130", "110140", "110190"), account_names=("Cash in hand - KS (Front Office)",), level=2),
+    _row("bank", "Cash at Bank", codes=(("121010", "128050"), "131011"), account_names=("A Bank -Trust Call Saving -MMK (0021011200019184)",), level=2),
+    _row("recv_external_personal", "Receivable-External-Personal", codes=(("130010", "130099"),), account_names=("Trade Receivable - Inpatient/Outpatient Receivable",), level=3),
     _row("recv_external_corporate", "Receivable-External-Corporate", codes=(("130100", "130199"),), level=3),
     _row("recv_external_rental", "Receivable-External-Rental", codes=(("130200", "130299"),), level=3),
     _row("recv_external_complex", "Receivable-External-Complex", codes=(("130300", "130399"),), level=3),
@@ -193,26 +196,26 @@ ASSET_DETAIL = (
     _row("recv_internal_vtr", "Receivable-Internal company (within VTR)", codes=(("130500", "130599"),), level=3),
     _row("recv_internal_other", "Receivable-Internal company (out of VTR)", codes=(("130600", "130699"),), level=3),
     _row("recv_boi", "Receivable-BOI,BOD", codes=(("130700", "130799"),), level=3),
-    _row("recv_other", "Receivable-Other", codes=(("130800", "130999"),), level=3),
+    _row("recv_other", "Receivable-Other", codes=(("130800", "130999"),), account_names=("Other Receivable - Others",), level=3),
     _row("recv_inpatient", "Inpatient Receivable", codes=(("131000", "131999"),), level=3),
-    _row("inventory", "Inventory", codes=(("140010", "140200"),), level=2),
-    _row("prepayments", "Prepaid and Advance Payments", codes=(("150010", "150150"),), level=2),
-    _row("advanced_tax", "Advanced Tax", codes=(("160000", "169999"),), level=2),
-    _row("other_assets", "Others", codes=(("170000", "199999"),), level=2),
+    _row("inventory", "Inventory", codes=(("140010", "140200"),), account_names=("Pharmacy",), level=2),
+    _row("prepayments", "Prepaid and Advance Payments", codes=(("150010", "150150"),), account_names=("Prepaid Expenses",), level=2),
+    _row("advanced_tax", "Advanced Tax", codes=(("160000", "169999"),), account_names=("Advance Income Tax",), level=2),
+    _row("other_assets", "Others", codes=(("170000", "199999"),), account_names=("Deposit payment",), level=2),
 )
 
 EQUITY_LIABILITY_DETAIL = (
-    _row("share_capital", "Issued & Paid Up Share Capital", codes=("400010", "400020", "400030"), level=2),
-    _row("dividend", "Dividend", codes=("400070",), level=2),
-    _row("retained", "410000 Retained Earning", codes=("410000",), level=3),
+    _row("share_capital", "Issued & Paid Up Share Capital", codes=("400010", "400020", "400030"), account_names=("Ordinary Share",), level=2),
+    _row("dividend", "Dividend", codes=("400070",), account_names=("Dividend Payable",), level=2),
+    _row("retained", "410000 Retained Earning", codes=("410000",), account_names=("Retained Earnings",), level=3),
     _row("unallocated", "Unallocated Earnings", codes=(("410020", "410099"),), level=3),
     _row("previous_unallocated", "Previous Years Unallocated Earnings", codes=(("410100", "419999"),), level=3),
-    _row("current_profit", "410010 Current year's profit or loss", codes=("410010",), level=3),
-    _row("noncurrent_liabilities", "NON CURRENT LIABILITIES", codes=("320010", "320015"), level=2),
-    _row("trade_payables", "Trade & Other Payables", codes=(("310020", "310060"), ("320020", "320035")), level=3),
-    _row("deferred_income", "Advance Receipt & Deferred Income", codes=(("310200", "310230"),), level=3),
-    _row("tax_payable", "Current Tax Payable", codes=(("310250", "310280"),), level=3),
-    _row("other_payable", "Other Current Payable", codes=(("310090", "310140"),), level=3),
+    _row("current_profit", "410010 Current year's profit or loss", codes=("410010",), account_names=("Current year's profit or loss",), level=3),
+    _row("noncurrent_liabilities", "NON CURRENT LIABILITIES", codes=("320010", "320015"), account_names=("Long Term Loans",), level=2),
+    _row("trade_payables", "Trade & Other Payables", codes=(("310020", "310060"), ("320020", "320035")), account_names=("Trade payables - Supplier",), level=3),
+    _row("deferred_income", "Advance Receipt & Deferred Income", codes=(("310200", "310230"),), account_names=("Deferred Income",), level=3),
+    _row("tax_payable", "Current Tax Payable", codes=(("310250", "310280"),), account_names=("Income Tax Payable",), level=3),
+    _row("other_payable", "Other Current Payable", codes=(("310090", "310140"),), account_names=("Payable Expense",), level=3),
     _row("off_balance", "OFF BALANCE SHEET ACCOUNTS", codes=(("900000", "999999"),), level=0, total=True),
 )
 
@@ -259,13 +262,13 @@ class VhgBalanceSheetSummaryReportHandler(VhgBalanceSheetReportBase):
         ASSET_DETAIL[2], ASSET_DETAIL[3],
         _row("current_assets", "Current Assets", children=("cash", "bank", "receivables_summary", "inventory", "prepayments", "advanced_tax", "other_assets"), level=1, total=True),
         ASSET_DETAIL[4], ASSET_DETAIL[5],
-        _row("receivables_summary", "Trade & Other Receivables", codes=(("130010", "131999"),), level=2),
+        _row("receivables_summary", "Trade & Other Receivables", codes=(("130010", "131999"),), account_names=("Trade Receivable - Inpatient/Outpatient Receivable",), level=2),
         *ASSET_DETAIL[16:],
         _row("equity_liabilities", "SHAREHOLDERS' EQUITY & LIABILITIES", children=("equity_summary", "liabilities_summary"), level=0, total=True),
         _row("equity_summary", "SHAREHOLDERS' EQUITY", children=("share_capital", "advance_share", "retained_summary", "unallocated", "current_profit", "previous_unallocated", "joint_investment"), level=1, total=True),
         EQUITY_LIABILITY_DETAIL[0],
-        _row("advance_share", "Advance Share Capital", codes=("400040",), level=2),
-        _row("retained_summary", "Retained Earning", codes=("410000",), level=2),
+        _row("advance_share", "Advance Share Capital", codes=("400040",), account_names=("Advance Capital",), level=2),
+        _row("retained_summary", "Retained Earning", codes=("410000",), account_names=("Retained Earnings",), level=2),
         EQUITY_LIABILITY_DETAIL[3], EQUITY_LIABILITY_DETAIL[5], EQUITY_LIABILITY_DETAIL[4],
         _row("joint_investment", "Joint Investment for Departments", codes=("320020",), level=2),
         _row("liabilities_summary", "LIABILITIES", children=("noncurrent_liabilities", "trade_payables", "deferred_income", "tax_payable", "other_payable"), level=1, total=True),
