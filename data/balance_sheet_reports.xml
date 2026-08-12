@@ -173,6 +173,7 @@
                             <record id="bs_notes_retained" model="account.report.line">
                                 <field name="name">Retained Earning</field>
                                 <field name="code">RET_EARN</field>
+                                <field name="sequence">24</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="groupby" eval="False"/>
                                 <field name="foldable" eval="True"/>
@@ -182,6 +183,7 @@
                                     <record id="bs_notes_retained_410000" model="account.report.line">
                                         <field name="name">410000 Retained Earning</field>
                                         <field name="code">RETAINED_EARNING_TOTAL</field>
+                                        <field name="sequence">25</field>
                                         <field name="hierarchy_level">5</field>
                                         <field name="groupby">account_id</field>
                                         <field name="foldable" eval="True"/>
@@ -191,6 +193,7 @@
                                     <record id="bs_notes_unallocated_earnings" model="account.report.line">
                                         <field name="name">Unallocated Earnings</field>
                                         <field name="code">UNAFFECTED_EARNINGS_COPY</field>
+                                        <field name="sequence">26</field>
                                         <field name="hierarchy_level">5</field>
                                         <field name="foldable" eval="True"/>
                                         <field name="hide_if_zero" eval="True"/>
@@ -199,6 +202,7 @@
                                     <record id="bs_notes_previous_unallocated_earnings" model="account.report.line">
                                         <field name="name">Previous Years Unallocated Earnings</field>
                                         <field name="code">PREV_YEAR_EARNINGS_COPY</field>
+                                        <field name="sequence">27</field>
                                         <field name="hierarchy_level">5</field>
                                         <field name="expression_ids">
                                             <record id="bs_notes_previous_unallocated_allocated" model="account.report.expression">
@@ -227,6 +231,7 @@
                             <record id="bs_notes_current_profit" model="account.report.line">
                                 <field name="name">Current year's profit or loss</field>
                                 <field name="code">Cur_Yr_PL</field>
+                                <field name="sequence">28</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="groupby" eval="False"/>
                                 <field name="foldable" eval="True"/>
@@ -236,6 +241,7 @@
                                     <record id="bs_notes_current_profit_410010" model="account.report.line">
                                         <field name="name">410010 Current year's profit or loss</field>
                                         <field name="code">CURR_YEAR_EARNINGS_COPY</field>
+                                        <field name="sequence">29</field>
                                         <field name="hierarchy_level">5</field>
                                         <field name="foldable" eval="True"/>
                                         <field name="hide_if_zero" eval="True"/>
@@ -268,12 +274,14 @@
                     <record id="bs_notes_liability_section" model="account.report.line">
                         <field name="name">LIABILITIES</field>
                         <field name="code">VHG_BS_LIABILITY_SECTION</field>
+                        <field name="sequence">30</field>
                         <field name="hierarchy_level">1</field>
                         <field name="aggregation_formula">VHG_BS_NCL.balance + VHG_BS_CL_SECTION.balance</field>
                         <field name="children_ids">
                             <record id="bs_notes_noncurrent_liability" model="account.report.line">
                                 <field name="name">NON CURRENT LIABILITIES</field>
                                 <field name="code">VHG_BS_NCL</field>
+                                <field name="sequence">31</field>
                                 <field name="groupby">account_id</field>
                                 <field name="foldable" eval="True"/>
                                 <field name="domain_formula">-sum([('account_id.account_type', '=', 'liability_non_current')])</field>
@@ -281,12 +289,14 @@
                             <record id="bs_notes_current_liability_section" model="account.report.line">
                                 <field name="name">CURRENT LIABILITIES</field>
                                 <field name="code">VHG_BS_CL_SECTION</field>
+                                <field name="sequence">32</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="aggregation_formula">VHG_BS_TRADE_PAYABLES.balance + VHG_BS_DEFERRED.balance + VHG_BS_TAX_PAYABLE.balance + VHG_BS_OTHER_PAYABLE.balance</field>
                                 <field name="children_ids">
                                     <record id="bs_notes_trade_payables" model="account.report.line">
                                         <field name="name">Trade &amp; Other Payables</field>
                                         <field name="code">VHG_BS_TRADE_PAYABLES</field>
+                                        <field name="sequence">33</field>
                                         <field name="groupby">account_id</field>
                                         <field name="foldable" eval="True"/>
                                         <field name="domain_formula">-sum([('account_id.code', 'in', ['310010', '310015', '310016', '310020', '310030', '310035', '310036', '310040', '310045', '310050', '310060', '310090', '310095', '310100', '310105', '310115', '310120', '310125', '310130', '310135', '310140', '310220', '310230', '310250', '310275', '310280'])])</field>
@@ -294,6 +304,7 @@
                                     <record id="bs_notes_deferred_income" model="account.report.line">
                                         <field name="name">Advance Receipt &amp; Deferred Income</field>
                                         <field name="code">VHG_BS_DEFERRED</field>
+                                        <field name="sequence">34</field>
                                         <field name="groupby">account_id</field>
                                         <field name="foldable" eval="True"/>
                                         <field name="domain_formula">-sum([('account_id.code', 'in', ['310205', '310025', '310210', '310200', '310215'])])</field>
@@ -301,6 +312,7 @@
                                     <record id="bs_notes_tax_payable" model="account.report.line">
                                         <field name="name">Current Tax Payable</field>
                                         <field name="code">VHG_BS_TAX_PAYABLE</field>
+                                        <field name="sequence">35</field>
                                         <field name="groupby">account_id</field>
                                         <field name="foldable" eval="True"/>
                                         <field name="domain_formula">-sum([('account_id.code', 'in', ['310255', '310260', '310265', '310270'])])</field>
@@ -308,6 +320,7 @@
                                     <record id="bs_notes_other_payable" model="account.report.line">
                                         <field name="name">Other Current Payable</field>
                                         <field name="code">VHG_BS_OTHER_PAYABLE</field>
+                                        <field name="sequence">36</field>
                                         <field name="groupby">account_id</field>
                                         <field name="foldable" eval="True"/>
                                         <field name="domain_formula">-sum([('account_id.code', 'in', ['310110'])])</field>
@@ -321,6 +334,7 @@
             <record id="bs_notes_off_balance" model="account.report.line">
                 <field name="name">OFF BALANCE SHEET ACCOUNTS</field>
                 <field name="code">VHG_BS_OFF_BALANCE</field>
+                <field name="sequence">39</field>
                 <field name="hierarchy_level">0</field>
                 <field name="groupby">account_id</field>
                 <field name="foldable" eval="True"/>

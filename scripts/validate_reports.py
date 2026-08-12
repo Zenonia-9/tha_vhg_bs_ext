@@ -118,6 +118,14 @@ assert by_code["RETAINED_EARNING_TOTAL"].parent_id == by_code["RET_EARN"]
 assert by_code["UNAFFECTED_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["PREV_YEAR_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["CURR_YEAR_EARNINGS_COPY"].parent_id == by_code["Cur_Yr_PL"]
+for child_code in (
+    "RETAINED_EARNING_TOTAL", "UNAFFECTED_EARNINGS_COPY",
+    "PREV_YEAR_EARNINGS_COPY", "CURR_YEAR_EARNINGS_COPY",
+):
+    child = by_code[child_code]
+    assert child.parent_id.sequence < child.sequence, (
+        f"{child.name}: parent must precede child in report editor order"
+    )
 current_expressions = {expression.label: expression for expression in by_code["CURR_YEAR_EARNINGS_COPY"].expression_ids}
 assert current_expressions["pnl"].subformula == "cross_report(account_reports.profit_and_loss)"
 assert current_expressions["pnl"].date_scope == "from_fiscalyear"
