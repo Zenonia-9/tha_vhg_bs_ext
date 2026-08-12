@@ -1,8 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="horizontal_group_vhg_balance_sheet_consolidate" model="account.report.horizontal.group">
+        <field name="name">Balance Sheet Consolidate</field>
+        <field name="rule_ids">
+            <record id="horizontal_group_vhg_balance_sheet_consolidate_company" model="account.report.horizontal.group.rule">
+                <field name="field_name">company_id</field>
+                <field name="domain">[]</field>
+            </record>
+        </field>
+    </record>
+
     <record id="report_vhg_balance_sheet_notes" model="account.report">
         <field name="name">Management Balance Sheet Notes &amp; Summary</field>
         <field name="filter_analytic_groupby" eval="True"/>
+        <field name="horizontal_group_ids" eval="[Command.link(ref('horizontal_group_vhg_balance_sheet_consolidate'))]"/>
         <field name="filter_unfold_all" eval="True"/>
         <field name="filter_date_range" eval="False"/>
         <field name="filter_journals" eval="True"/>
@@ -269,6 +280,8 @@
 
     <record id="report_vhg_balance_sheet_summary" model="account.report">
         <field name="name">Management Balance Sheet Summary</field>
+        <field name="filter_analytic_groupby" eval="True"/>
+        <field name="horizontal_group_ids" eval="[Command.link(ref('horizontal_group_vhg_balance_sheet_consolidate'))]"/>
         <field name="filter_unfold_all" eval="False"/>
         <field name="filter_date_range" eval="False"/>
         <field name="filter_journals" eval="True"/>

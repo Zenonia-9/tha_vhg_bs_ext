@@ -233,10 +233,6 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
 
     def _custom_line_postprocessor(self, report, options, lines):
         lines = super()._custom_line_postprocessor(report, options, lines)
-        # Native groupby expressions create a synthetic "Total ..." row even
-        # while folded. The VHG statement displays only the named statement
-        # line and its accounts when deliberately unfolded.
-        lines = [line for line in lines if "|total~~" not in line["id"]]
         bold_codes = {
             "VHG_BS_ASSETS_SECTION", "VHG_BS_NCA_SECTION", "VHG_BS_OTHER_NCA_SECTION",
             "VHG_BS_TOTAL_OTHER_NCA", "VHG_BS_TOTAL_NCA", "VHG_BS_CA_SECTION",
