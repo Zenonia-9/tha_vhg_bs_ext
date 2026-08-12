@@ -105,4 +105,15 @@ for code, account_code in mapped_codes.items():
 assert "account_id.code" in by_code["VHG_BS_OTHER_ASSETS"].expression_ids.filtered(
     lambda expression: expression.engine == "domain"
 ).formula
+
+ppe_line = next(line for line in notes._get_lines(notes.get_options({})) if line["name"] == "Property, Plant and Equipment")
+assert ppe_line["expand_function"] == "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
+ppe_expanded = notes._expand_unfoldable_line(
+    ppe_line["expand_function"], ppe_line["id"], ppe_line.get("groupby"),
+    notes.get_options({}), None, 0, None,
+)
+ppe_account_lines = [line for line in ppe_expanded if line.get("parent_id") == ppe_line["id"]]
+assert len(ppe_account_lines) == 36, "All mapped PPE accounts must be visible, including 0.00 accounts"
+assert ppe_account_lines[0]["name"].startswith("210010 ")
+assert ppe_account_lines[-1]["name"].startswith("220100 ")
 print(f"Notes native definitions: {len(all_notes_lines)} lines")

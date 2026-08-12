@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Management Balance Sheet reports based on the VHG source definitions."""
 
+import ast
 from collections import defaultdict
 
 from odoo import models
@@ -248,7 +249,83 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
                 line["class"] = f"{line.get('class', '')} fw-bold".strip()
             if code in section_codes:
                 line["class"] = f"{line.get('class', '')} o_vhg_bs_section".strip()
+            if code and self._mapped_account_codes(report_lines.browse(record_id)):
+                # Native account groupby only creates a row when a matching move line
+                # exists. Management Notes must instead show every configured account.
+                line["expand_function"] = "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
         return lines
+
+    @staticmethod
+    def _mapped_account_codes(report_line):
+        expression = report_line.expression_ids.filtered(
+            lambda item: item.engine == "domain" and "account_id.code" in item.formula
+        )[:1]
+        if not expression:
+            return []
+        try:
+            domain = ast.literal_eval(expression.formula)
+        except (SyntaxError, ValueError):
+            return []
+        for field_name, operator, value in domain:
+            if field_name == "account_id.code" and operator == "in":
+                return value
+        return []
+
+    def _report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None,
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        report_line_id = next((
+            record_id for _markup, model, record_id in reversed(report._parse_line_id(line_dict_id))
+            if model == "account.report.line"
+        ), None)
+        report_line = self.env["account.report.line"].browse(report_line_id)
+        account_codes = self._mapped_account_codes(report_line)
+        if not account_codes:
+            return {"lines": [], "offset_increment": 0, "has_more": False}
+
+        accounts = self.env["account.account"].search([("code", "in", account_codes)])
+        accounts_by_code = {account.code: account for account in accounts}
+        ordered_accounts = [accounts_by_code[code] for code in account_codes if code in accounts_by_code]
+        balances_by_group = {}
+        for group_key, column_options in report._split_options_per_column_group(options).items():
+            query = report._get_report_query(column_options, "from_beginning")
+            self.env.cr.execute(SQL(
+                """
+                    SELECT account_move_line.account_id,
+                           COALESCE(SUM(%(balance)s), 0.0) AS balance
+                      FROM %(from_clause)s
+                      %(currency_join)s
+                     WHERE %(where_clause)s
+                       AND account_move_line.account_id IN %(account_ids)s
+                  GROUP BY account_move_line.account_id
+                """,
+                balance=report._currency_table_apply_rate(SQL("account_move_line.balance")),
+                from_clause=query.from_clause,
+                currency_join=report._currency_table_aml_join(column_options),
+                where_clause=query.where_clause,
+                account_ids=tuple(account.id for account in ordered_accounts) or (0,),
+            ))
+            balances_by_group[group_key] = {
+                item["account_id"]: item["balance"] for item in self.env.cr.dictfetchall()
+            }
+
+        lines = []
+        for account in ordered_accounts:
+            columns = [report._build_column_dict(
+                balances_by_group[column["column_group_key"]].get(account.id, 0.0),
+                column,
+                options=options,
+            ) for column in options["columns"]]
+            lines.append({
+                "id": report._get_generic_line_id("account.account", account.id, parent_line_id=line_dict_id),
+                "parent_id": line_dict_id,
+                "name": f"{account.code} {account.name}",
+                "level": report_line.hierarchy_level + 2,
+                "columns": columns,
+                "caret_options": "account.account",
+            })
+        return {"lines": lines, "offset_increment": len(lines), "has_more": False}
 
     _ROWS = (
         _row("assets", "ASSETS", children=("noncurrent_assets", "current_assets"), level=0, total=True),
