@@ -116,4 +116,10 @@ ppe_account_lines = [line for line in ppe_expanded if line.get("parent_id") == p
 assert len(ppe_account_lines) == 36, "All mapped PPE accounts must be visible, including 0.00 accounts"
 assert ppe_account_lines[0]["name"].startswith("210010 ")
 assert ppe_account_lines[-1]["name"].startswith("220100 ")
+
+handler = env["tha.vhg.balance.sheet.summary.report.handler"]
+assert not handler._matches(
+    {"code": "999999", "name": "Building & infrastructure development - gross"},
+    {"codes": ("210010",)},
+), "Balance Sheet fallback matching must never use an account name"
 print(f"Notes native definitions: {len(all_notes_lines)} lines")
