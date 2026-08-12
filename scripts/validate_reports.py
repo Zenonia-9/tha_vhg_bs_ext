@@ -1,5 +1,10 @@
-notes = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_notes")
-summary = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_summary")
+company = env["res.company"].search([
+    ("name", "=", "THUKHA SAYTANAR CO. Ltd (Victoria Hospital)"),
+], limit=1)
+assert company, "THUKHA SAYTANAR company was not found"
+report_context = {"allowed_company_ids": [company.id]}
+notes = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_notes").with_company(company).with_context(**report_context)
+summary = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_summary").with_company(company).with_context(**report_context)
 
 assert notes.name == "Management Balance Sheet Notes & Summary"
 assert env.ref("tha_vhg_bs_ext.action_report_vhg_balance_sheet_notes").name == notes.name
@@ -30,13 +35,21 @@ notes_lines = notes._get_lines(notes_options)
 assert any(line.get("parent_id") for line in notes_lines), "Notes: mapped accounts did not unfold"
 print(f"Notes unfolded: {len(notes_lines)} lines")
 
-if env.company.totals_below_sections:
-    folded_lines = notes._get_lines(notes.get_options({}))
-    folded_names = [line["name"] for line in folded_lines]
-    for name in ("Total ASSETS", "Total SHAREHOLDERS' EQUITY & LIABILITIES", "Total Cash at Bank"):
-        assert name in folded_names, f"Missing native totals-below-section line: {name}"
-    assert any("|total~~" in line["id"] for line in folded_lines)
-    print("Notes native totals below sections: OK")
+folded_lines = notes._get_lines(notes.get_options({}))
+folded_names = [line["name"] for line in folded_lines]
+for name in ("Total ASSETS", "Total SHAREHOLDERS' EQUITY & LIABILITIES", "Total Cash at Bank"):
+    assert name in folded_names, f"Missing native totals-below-section line: {name}"
+assert any("|total~~" in line["id"] for line in folded_lines)
+print("Notes report-local totals below sections: OK")
+
+pnl_notes = env.ref("tha_vhg_pnl_ext.report_vhg_profit_and_loss", raise_if_not_found=False)
+if pnl_notes and not company.totals_below_sections:
+    pnl_notes = pnl_notes.with_company(company).with_context(**report_context)
+    pnl_lines = pnl_notes._get_lines(pnl_notes.get_options({}))
+    assert not any("|total~~" in line["id"] for line in pnl_lines), (
+        "Balance Sheet totals leaked into P&L Notes"
+    )
+    print("P&L Notes isolation: OK")
 
 assert notes.line_ids, "Notes must use native account.report.line records"
 all_notes_lines = env["account.report.line"].search([("report_id", "=", notes.id)])
