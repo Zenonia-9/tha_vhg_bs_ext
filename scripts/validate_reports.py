@@ -65,8 +65,9 @@ for code in ("VHG_BS_PPE", "VHG_BS_CASH", "VHG_BS_TRADE_PAYABLES"):
     assert by_code[code].foldable and by_code[code].groupby == "account_id"
 for code in ("VHG_BS_ASSETS_SECTION", "VHG_BS_EL_SECTION"):
     assert not by_code[code].foldable
-for code in ("VHG_BS_NCA_SECTION", "VHG_BS_CA_SECTION", "VHG_BS_EQUITY_SECTION", "VHG_BS_LIABILITY_SECTION", "VHG_BS_CL_SECTION"):
+for code in ("VHG_BS_NCA_SECTION", "VHG_BS_CA_SECTION", "VHG_BS_EQUITY_SECTION", "VHG_BS_LIABILITY_SECTION"):
     assert by_code[code].hierarchy_level == 1
+assert by_code["VHG_BS_CL_SECTION"].hierarchy_level == 3
 obsolete_total_codes = {
     "VHG_BS_TOTAL_OTHER_NCA", "VHG_BS_TOTAL_NCA", "VHG_BS_TOTAL_CA",
     "VHG_BS_TOTAL_EQUITY", "VHG_BS_TOTAL_CL", "VHG_BS_TOTAL_LIABILITIES",
@@ -74,4 +75,34 @@ obsolete_total_codes = {
 }
 assert not obsolete_total_codes.intersection(by_code)
 assert by_code["VHG_BS_BASE_NCA"].name == "Total Non Current Assets"
+
+mapped_codes = {
+    "VHG_BS_PPE": "210010",
+    "VHG_BS_INTANGIBLE": "230015",
+    "VHG_BS_INVESTMENT": "240010",
+    "VHG_BS_CONSTRUCTION": "240055",
+    "VHG_BS_CASH": "110110",
+    "VHG_BS_BANK": "121010",
+    "VHG_BS_RECEIVABLES": "130050",
+    "VHG_BS_INVENTORY": "140010",
+    "VHG_BS_PREPAYMENTS": "150010",
+    "VHG_BS_ADVANCED_TAX": "150110",
+    "VHG_BS_SHARE_CAPITAL": "400010",
+    "VHG_BS_DIVIDEND": "400070",
+    "VHG_BS_RETAINED": "410000",
+    "VHG_BS_TRADE_PAYABLES": "310010",
+    "VHG_BS_DEFERRED": "310205",
+    "VHG_BS_TAX_PAYABLE": "310255",
+    "VHG_BS_OTHER_PAYABLE": "310110",
+}
+for code, account_code in mapped_codes.items():
+    formula = by_code[code].expression_ids.filtered(
+        lambda expression: expression.engine == "domain"
+    ).formula
+    assert "account_id.code" in formula and account_code in formula, (
+        f"{code} is not mapped with its supplied account codes"
+    )
+assert "account_id.code" in by_code["VHG_BS_OTHER_ASSETS"].expression_ids.filtered(
+    lambda expression: expression.engine == "domain"
+).formula
 print(f"Notes native definitions: {len(all_notes_lines)} lines")
