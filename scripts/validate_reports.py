@@ -9,6 +9,26 @@ report_context = {"allowed_company_ids": [company.id]}
 notes = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_notes").with_company(company).with_context(**report_context)
 summary = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_summary").with_company(company).with_context(**report_context)
 
+as_of_august = {
+    "date": {
+        "string": "As of 08/13/2026",
+        "period_type": "today",
+        "mode": "single",
+        "date_from": "2026-04-01",
+        "date_to": "2026-08-13",
+        "filter": "today",
+    },
+    "comparison": {"filter": "previous_period", "number_period": 1},
+}
+for report in (notes, summary):
+    comparison_options = report.get_options(as_of_august)
+    comparison_period = comparison_options["comparison"]["periods"][0]
+    assert comparison_period["date_to"] == "2026-07-31", (
+        f"{report.name}: one previous period must end on 2026-07-31"
+    )
+    assert comparison_period["string"] == "As of 07/31/2026"
+print("Balance Sheet prior-period month-end comparison: OK")
+
 assert notes.name == "Management Balance Sheet Notes & Summary"
 assert env.ref("tha_vhg_bs_ext.action_report_vhg_balance_sheet_notes").name == notes.name
 
