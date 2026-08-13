@@ -20,7 +20,13 @@ for report in (notes, summary):
         "selected_horizontal_group_id": horizontal_groups[0]["id"],
     })
     assert horizontal_options["selected_horizontal_group_id"] == horizontal_groups[0]["id"]
-    assert report._get_lines(horizontal_options), f"{report.name}: Horizontal Group did not render"
+    assert horizontal_options["show_horizontal_group_total"] is False
+    horizontal_lines = report._get_lines(horizontal_options)
+    assert horizontal_lines, f"{report.name}: Horizontal Group did not render"
+    assert all(
+        len(line["columns"]) == len(horizontal_options["columns"])
+        for line in horizontal_lines
+    ), f"{report.name}: Horizontal Group added a redundant total column"
     assert isinstance(options.get("vhg_notes_header_rows"), list), (
         f"{report.name}: reusable report header rows were not initialized"
     )

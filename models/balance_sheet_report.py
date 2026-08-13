@@ -43,6 +43,9 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
             ),
             "vhg_notes_report_title": self._REPORT_TITLE,
             "vhg_notes_header_rows": options.get("column_headers", []),
+            # Match P&L Notes: the selected horizontal group columns are the
+            # report output, so do not append Odoo's redundant overall total.
+            "show_horizontal_group_total": False,
         })
         options["custom_display_config"].update({
             "templates": {
