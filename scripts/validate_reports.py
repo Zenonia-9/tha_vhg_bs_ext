@@ -27,6 +27,39 @@ for report in (notes, summary):
         len(line["columns"]) == len(horizontal_options["columns"])
         for line in horizontal_lines
     ), f"{report.name}: Horizontal Group added a redundant total column"
+
+multi_company_ids = env["res.company"].search([], limit=3).ids
+if len(multi_company_ids) > 1:
+    multi_company_context = {"allowed_company_ids": multi_company_ids}
+    for report_xmlid in (
+        "tha_vhg_bs_ext.report_vhg_balance_sheet_notes",
+        "tha_vhg_bs_ext.report_vhg_balance_sheet_summary",
+    ):
+        report = env.ref(report_xmlid).with_context(**multi_company_context)
+        multi_company_options = report.get_options({
+            "companies": [{"id": company_id} for company_id in multi_company_ids],
+        })
+        horizontal_options = report.get_options({
+            "companies": [{"id": company_id} for company_id in multi_company_ids],
+            "selected_horizontal_group_id": multi_company_options["available_horizontal_groups"][0]["id"],
+        })
+        assert horizontal_options["show_horizontal_group_total"] is True
+        assert len(horizontal_options["columns"]) == len(multi_company_ids)
+        assert len(horizontal_options["vhg_notes_header_rows"]) == 2
+        assert sum(header["colspan"] for header in horizontal_options["vhg_notes_header_rows"][0]) == len(multi_company_ids)
+        assert sum(header["colspan"] for header in horizontal_options["vhg_notes_header_rows"][1]) == len(multi_company_ids)
+        multi_company_lines = report._get_lines(horizontal_options)
+        numeric_lines = [
+            line for line in multi_company_lines
+            if line["columns"] and any(
+                isinstance(column.get("no_format"), (int, float))
+                for column in line["columns"]
+            )
+        ]
+        assert any(
+            "horizontal_group_total_data" in line for line in numeric_lines
+        ), f"{report.name}: Consolidate values were not generated"
+    print("Multi-company Consolidate column: OK")
     assert isinstance(options.get("vhg_notes_header_rows"), list), (
         f"{report.name}: reusable report header rows were not initialized"
     )

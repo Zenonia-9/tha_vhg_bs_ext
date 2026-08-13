@@ -16,11 +16,13 @@
                     <th/>
                     <t t-foreach="headerRow" t-as="header" t-key="header_index">
                         <th class="column_header"
-                            t-att-colspan="header.colspan || 1"
+                            t-att-colspan="(header.colspan || 1) + (controller.options.show_horizontal_group_total &amp;&amp; headerRow_index === 0 &amp;&amp; header_index === 0 ? 1 : 0)"
                             t-att-rowspan="header.rowspan || 1">
                             <t t-out="header.name"/>
                         </th>
                     </t>
+                    <th t-if="controller.options.show_horizontal_group_total and headerRow_index === controller.options.vhg_notes_header_rows.length - 1"
+                        class="column_header">Consolidate</th>
                 </tr>
             </t>
             <tr data-id="column_subheaders_row">
@@ -28,6 +30,7 @@
                 <t t-foreach="controller.options.columns" t-as="column" t-key="column_index">
                     <th class="column_header"><t t-out="column.name"/></th>
                 </t>
+                <th t-if="controller.options.show_horizontal_group_total" class="column_header">Amount</th>
             </tr>
         </thead>
     </t>

@@ -37,16 +37,46 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
         companies = self.env["res.company"].browse(
             report.get_report_company_ids(options)
         )
+        selected_horizontal_group = options.get("selected_horizontal_group_id")
+        horizontal_names = {}
+        for header in options.get("column_headers", [])[1:]:
+            for item in header:
+                horizontal_element = item.get("horizontal_groupby_element")
+                if horizontal_element:
+                    horizontal_names[tuple(sorted(horizontal_element.items()))] = item["name"]
+
+        top_headers = []
+        horizontal_headers = []
+        for column in options["columns"]:
+            column_group = options["column_groups"][column["column_group_key"]]
+            date_name = column_group["forced_options"].get("date", {}).get("string", "")
+            if top_headers and top_headers[-1]["name"] == date_name:
+                top_headers[-1]["colspan"] += 1
+            else:
+                top_headers.append({"name": date_name, "colspan": 1})
+            if selected_horizontal_group:
+                horizontal_key = tuple(column_group.get("horizontal_groupby_element", ()))
+                horizontal_name = horizontal_names.get(horizontal_key, "")
+                if horizontal_headers and horizontal_headers[-1]["name"] == horizontal_name:
+                    horizontal_headers[-1]["colspan"] += 1
+                else:
+                    horizontal_headers.append({"name": horizontal_name, "colspan": 1})
+
+        # Odoo's native total is useful only when there are several company
+        # columns. With a single company it merely duplicates that value.
+        show_consolidate = bool(selected_horizontal_group and len(options["companies"]) > 1)
         options.update({
             "vhg_notes_company_names": (
                 ", ".join(companies.mapped("name")) or self.env.company.name
             ),
             "vhg_notes_report_title": self._REPORT_TITLE,
-            "vhg_notes_header_rows": options.get("column_headers", []),
-            # Match P&L Notes: the selected horizontal group columns are the
-            # report output, so do not append Odoo's redundant overall total.
-            "show_horizontal_group_total": False,
+            "vhg_notes_header_rows": (
+                [top_headers, horizontal_headers]
+                if selected_horizontal_group else [top_headers]
+            ),
+            "show_horizontal_group_total": show_consolidate,
         })
+        options["column_headers"] = [top_headers]
         options["custom_display_config"].update({
             "templates": {
                 "AccountReportHeader": "tha_vhg_bs_ext.BalanceSheetReportHeader",
