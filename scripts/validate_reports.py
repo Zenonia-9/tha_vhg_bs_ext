@@ -2,6 +2,9 @@ company = env["res.company"].search([
     ("name", "=", "THUKHA SAYTANAR CO. Ltd (Victoria Hospital)"),
 ], limit=1)
 assert company, "THUKHA SAYTANAR company was not found"
+assert company.totals_below_sections, (
+    "THUKHA SAYTANAR must enable Odoo's native Add totals below sections setting"
+)
 report_context = {"allowed_company_ids": [company.id]}
 notes = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_notes").with_company(company).with_context(**report_context)
 summary = env.ref("tha_vhg_bs_ext.report_vhg_balance_sheet_summary").with_company(company).with_context(**report_context)
@@ -43,17 +46,25 @@ assert any("|total~~" in line["id"] for line in folded_lines)
 print("Notes report-local totals below sections: OK")
 
 pnl_notes = env.ref("tha_vhg_pnl_ext.report_vhg_profit_and_loss", raise_if_not_found=False)
-if pnl_notes and not company.totals_below_sections:
+if pnl_notes:
     pnl_notes = pnl_notes.with_company(company).with_context(**report_context)
     pnl_lines = pnl_notes._get_lines(pnl_notes.get_options({}))
-    assert not any("|total~~" in line["id"] for line in pnl_lines), (
-        "Balance Sheet totals leaked into P&L Notes"
+    assert any("|total~~" in line["id"] for line in pnl_lines), (
+        "Odoo native totals are missing from P&L Notes"
     )
-    print("P&L Notes isolation: OK")
+    print("P&L Notes native totals: OK")
 
 assert notes.line_ids, "Notes must use native account.report.line records"
 all_notes_lines = env["account.report.line"].search([("report_id", "=", notes.id)])
 by_code = {line.code: line for line in all_notes_lines}
+assert all(line.sequence for line in all_notes_lines), "Every Notes line needs an explicit sequence"
+assert len(set(all_notes_lines.mapped("sequence"))) == len(all_notes_lines), (
+    "Notes line sequences must be unique"
+)
+for line in all_notes_lines.filtered("parent_id"):
+    assert line.parent_id.sequence < line.sequence, (
+        f"{line.name}: parent must precede child in report editor order"
+    )
 for code in (
     "VHG_BS_ASSETS_SECTION", "VHG_BS_NCA_SECTION", "VHG_BS_BASE_NCA",
     "VHG_BS_OTHER_NCA_SECTION", "VHG_BS_CA_SECTION", "VHG_BS_EL_SECTION",
@@ -118,14 +129,6 @@ assert by_code["RETAINED_EARNING_TOTAL"].parent_id == by_code["RET_EARN"]
 assert by_code["UNAFFECTED_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["PREV_YEAR_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["CURR_YEAR_EARNINGS_COPY"].parent_id == by_code["Cur_Yr_PL"]
-for child_code in (
-    "RETAINED_EARNING_TOTAL", "UNAFFECTED_EARNINGS_COPY",
-    "PREV_YEAR_EARNINGS_COPY", "CURR_YEAR_EARNINGS_COPY",
-):
-    child = by_code[child_code]
-    assert child.parent_id.sequence < child.sequence, (
-        f"{child.name}: parent must precede child in report editor order"
-    )
 current_expressions = {expression.label: expression for expression in by_code["CURR_YEAR_EARNINGS_COPY"].expression_ids}
 assert current_expressions["pnl"].subformula == "cross_report(account_reports.profit_and_loss)"
 assert current_expressions["pnl"].date_scope == "from_fiscalyear"
@@ -146,9 +149,4 @@ assert len(ppe_account_lines) == 36, "All mapped PPE accounts must be visible, i
 assert ppe_account_lines[0]["name"].startswith("210010 ")
 assert ppe_account_lines[-1]["name"].startswith("220100 ")
 
-handler = env["tha.vhg.balance.sheet.summary.report.handler"]
-assert not handler._matches(
-    {"code": "999999", "name": "Building & infrastructure development - gross"},
-    {"codes": ("210010",)},
-), "Balance Sheet fallback matching must never use an account name"
 print(f"Notes native definitions: {len(all_notes_lines)} lines")

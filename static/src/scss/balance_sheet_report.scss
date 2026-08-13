@@ -1,7 +1,12 @@
 .o_vhg_balance_sheet {
     .o_vhg_bs_report_title {
-        text-align: center;
-        font-weight: 700;
+        border: 0 !important;
+        color: var(--AccountReport-muted-data-color, inherit) !important;
+        font-size: 0.875rem;
+        font-weight: 500 !important;
+        line-height: 1.5;
+        padding: 8px 14px 12px;
+        text-align: left !important;
         white-space: nowrap;
     }
 

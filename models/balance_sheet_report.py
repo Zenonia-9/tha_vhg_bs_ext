@@ -1,39 +1,24 @@
 # -*- coding: utf-8 -*-
-"""Management Balance Sheet reports based on the VHG source definitions."""
+"""Standalone handlers for the VHG management Balance Sheet reports."""
 
 import ast
-from collections import defaultdict
 
 from odoo import models
 from odoo.tools import SQL
-
-
-def _row(key, name, *, codes=(), children=(), level=1, total=False, unfold=True):
-    return {
-        "key": key, "name": name, "codes": tuple(codes), "children": tuple(children),
-        "level": level, "total": total, "unfold": unfold,
-    }
-
-
-PPE_CODES = tuple(
-    f"{prefix}{suffix:03d}"
-    for prefix in (210, 220)
-    for suffix in (10, 15, 20, 25, 30, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)
-)
 
 
 class IrUiMenu(models.Model):
     _inherit = "ir.ui.menu"
 
     def tha_vhg_attach_balance_sheet_management_menu(self):
-        """Use the existing shared menu without making another addon a dependency."""
+        """Attach to an installed shared root without depending on its addon."""
         own_root = self.env.ref("tha_vhg_bs_ext.menu_vhg_management_reports")
-        existing_root = self.search([
+        shared_root = self.search([
             ("id", "!=", own_root.id),
             ("name", "=", "Management Reports"),
             ("parent_id", "=", self.env.ref("account.menu_finance_configuration").id),
         ], order="id", limit=1)
-        target_root = existing_root or own_root
+        target_root = shared_root or own_root
         self.env.ref("tha_vhg_bs_ext.menu_action_report_vhg_balance_sheet_notes").parent_id = target_root
         self.env.ref("tha_vhg_bs_ext.menu_action_report_vhg_balance_sheet_summary").parent_id = target_root
 
@@ -44,180 +29,27 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
     _description = "VHG Balance Sheet Report Base"
 
     _REPORT_TITLE = ""
-    _ROWS = ()
 
     def _custom_options_initializer(self, report, options, previous_options):
-        super()._custom_options_initializer(report, options, previous_options=previous_options)
-        companies = self.env["res.company"].browse(report.get_report_company_ids(options))
+        super()._custom_options_initializer(
+            report, options, previous_options=previous_options,
+        )
+        companies = self.env["res.company"].browse(
+            report.get_report_company_ids(options)
+        )
         options.update({
-            "vhg_notes_company_names": ", ".join(companies.mapped("name")) or self.env.company.name,
+            "vhg_notes_company_names": (
+                ", ".join(companies.mapped("name")) or self.env.company.name
+            ),
             "vhg_notes_report_title": self._REPORT_TITLE,
-            # NotesReportHeader iterates this value directly. Keep the native
-            # account-report period headers while guaranteeing an iterable
-            # value when the report has no comparison columns.
             "vhg_notes_header_rows": options.get("column_headers", []),
         })
         options["custom_display_config"].update({
-            "templates": {"AccountReportHeader": "tha_vhg_bs_ext.BalanceSheetReportHeader"},
+            "templates": {
+                "AccountReportHeader": "tha_vhg_bs_ext.BalanceSheetReportHeader",
+            },
             "css_custom_class": "o_vhg_balance_sheet",
         })
-
-    @staticmethod
-    def _matches(account, row):
-        code = account["code"]
-        code_matches = bool(code) and any(
-            code == spec if isinstance(spec, str)
-            else spec[0] <= code <= spec[1]
-            for spec in row["codes"]
-        )
-        return code_matches
-
-    def _query_accounts(self, report, options):
-        result = {}
-        companies = report.get_report_company_ids(options)
-        accounts = self.env["account.account"].search([
-            ("company_ids", "in", companies),
-        ])
-        for group_key, column_options in report._split_options_per_column_group(options).items():
-            query = report._get_report_query(column_options, "from_beginning")
-            self.env.cr.execute(SQL(
-                """
-                    SELECT account_move_line.account_id,
-                           COALESCE(SUM(%(balance)s), 0.0) AS balance
-                      FROM %(from_clause)s
-                      %(currency_join)s
-                     WHERE %(where_clause)s
-                  GROUP BY account_move_line.account_id
-                """,
-                balance=report._currency_table_apply_rate(SQL("account_move_line.balance")),
-                from_clause=query.from_clause,
-                currency_join=report._currency_table_aml_join(column_options),
-                where_clause=query.where_clause,
-            ))
-            balances = {item["account_id"]: item["balance"] for item in self.env.cr.dictfetchall()}
-            result[group_key] = {
-                account.id: {
-                    "id": account.id,
-                    "code": (account.code or "").strip(),
-                    "name": account.name or "",
-                    "balance": balances.get(account.id, 0.0),
-                }
-                for account in accounts
-            }
-        return result
-
-    def _values(self, account_data):
-        values = defaultdict(dict)
-        rows = {row["key"]: row for row in self._ROWS}
-        for row in self._ROWS:
-            for group_key, accounts in account_data.items():
-                values[row["key"]][group_key] = sum(
-                    account["balance"] for account in accounts.values()
-                    if self._matches(account, row)
-                )
-
-        def aggregate(key, group_key):
-            row = rows[key]
-            if row["children"]:
-                values[key][group_key] = sum(
-                    aggregate(child, group_key) for child in row["children"]
-                )
-            return values[key][group_key]
-
-        for row in self._ROWS:
-            for group_key in account_data:
-                aggregate(row["key"], group_key)
-        return values, rows
-
-    def _columns(self, report, options, balances):
-        return [report._build_column_dict(
-            balances.get(column["column_group_key"], 0.0), column, options=options,
-        ) for column in options["columns"]]
-
-    def _line(self, report, options, row, balances):
-        line_id = report._get_generic_line_id(None, None, markup=f"vhg_bs_{row['key']}")
-        return {
-            "id": line_id,
-            "name": row["name"],
-            "level": row["level"],
-            "class": "fw-bold" if row["total"] else "",
-            "columns": self._columns(report, options, balances),
-            "unfoldable": bool(row["codes"] and row["unfold"]),
-            "unfolded": line_id in options.get("unfolded_lines", []) or options.get("unfold_all", False),
-            "expand_function": "_report_expand_unfoldable_line_vhg_balance_sheet",
-        }
-
-    def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
-        account_data = self._query_accounts(report, options)
-        values, _rows = self._values(account_data)
-        return [(0, self._line(report, options, row, values[row["key"]])) for row in self._ROWS]
-
-    def _report_expand_unfoldable_line_vhg_balance_sheet(
-        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None,
-    ):
-        report = self.env["account.report"].browse(options["report_id"])
-        markup, model, _record_id = report._parse_line_id(line_dict_id)[-1]
-        key = markup.removeprefix("vhg_bs_") if not model else ""
-        row = next((item for item in self._ROWS if item["key"] == key), None)
-        if not row:
-            return {"lines": [], "offset_increment": 0, "has_more": False}
-        account_data = self._query_accounts(report, options)
-        account_ids = sorted({
-            account_id for accounts in account_data.values() for account_id, account in accounts.items()
-            if self._matches(account, row)
-        }, key=lambda account_id: next(iter(account_data.values()))[account_id]["code"])
-        lines = []
-        for account_id in account_ids:
-            sample = next(iter(account_data.values()))[account_id]
-            balances = {key: accounts[account_id]["balance"] for key, accounts in account_data.items()}
-            lines.append({
-                "id": report._get_generic_line_id("account.account", account_id, parent_line_id=line_dict_id),
-                "parent_id": line_dict_id,
-                "name": f"{sample['code']} {sample['name']}",
-                "level": row["level"] + 1,
-                "columns": self._columns(report, options, balances),
-                "caret_options": "account.account",
-            })
-        return {"lines": lines, "offset_increment": len(lines), "has_more": False}
-
-
-ASSET_DETAIL = (
-    _row("ppe", "Property, Plant and Equipment", codes=PPE_CODES, level=2),
-    _row("intangibles", "Intangible Assets", codes=("230010", "230015", "230020"), level=2),
-    _row("investment_associates", "Investment in Associates", codes=(("240010", "240050"),), level=3),
-    _row("construction", "Construction", codes=("140120", ("240055", "240085"), "140210"), level=3),
-    _row("cash", "Cash & Cash Equivalents", codes=("110110", "110111", "110112", "110120", "110130", "110140", "110190"), level=2),
-    _row("bank", "Cash at Bank", codes=(("121010", "128050"), "131011"), level=2),
-    _row("recv_external_personal", "Receivable-External-Personal", codes=(("130010", "130099"),), level=3),
-    _row("recv_external_corporate", "Receivable-External-Corporate", codes=(("130100", "130199"),), level=3),
-    _row("recv_external_rental", "Receivable-External-Rental", codes=(("130200", "130299"),), level=3),
-    _row("recv_external_complex", "Receivable-External-Complex", codes=(("130300", "130399"),), level=3),
-    _row("recv_internal", "Receivable-Internal", codes=(("130400", "130499"),), level=3),
-    _row("recv_internal_vtr", "Receivable-Internal company (within VTR)", codes=(("130500", "130599"),), level=3),
-    _row("recv_internal_other", "Receivable-Internal company (out of VTR)", codes=(("130600", "130699"),), level=3),
-    _row("recv_boi", "Receivable-BOI,BOD", codes=(("130700", "130799"),), level=3),
-    _row("recv_other", "Receivable-Other", codes=(("130800", "130999"),), level=3),
-    _row("recv_inpatient", "Inpatient Receivable", codes=(("131000", "131999"),), level=3),
-    _row("inventory", "Inventory", codes=(("140010", "140200"),), level=2),
-    _row("prepayments", "Prepaid and Advance Payments", codes=(("150010", "150150"),), level=2),
-    _row("advanced_tax", "Advanced Tax", codes=(("160000", "169999"),), level=2),
-    _row("other_assets", "Others", codes=(("170000", "199999"),), level=2),
-)
-
-EQUITY_LIABILITY_DETAIL = (
-    _row("share_capital", "Issued & Paid Up Share Capital", codes=("400010", "400020", "400030"), level=2),
-    _row("dividend", "Dividend", codes=("400070",), level=2),
-    _row("retained", "410000 Retained Earning", codes=("410000",), level=3),
-    _row("unallocated", "Unallocated Earnings", codes=(("410020", "410099"),), level=3),
-    _row("previous_unallocated", "Previous Years Unallocated Earnings", codes=(("410100", "419999"),), level=3),
-    _row("current_profit", "410010 Current year's profit or loss", codes=("410010",), level=3),
-    _row("noncurrent_liabilities", "NON CURRENT LIABILITIES", codes=("320010", "320015"), level=2),
-    _row("trade_payables", "Trade & Other Payables", codes=(("310020", "310060"), ("320020", "320035")), level=3),
-    _row("deferred_income", "Advance Receipt & Deferred Income", codes=(("310200", "310230"),), level=3),
-    _row("tax_payable", "Current Tax Payable", codes=(("310250", "310280"),), level=3),
-    _row("other_payable", "Other Current Payable", codes=(("310090", "310140"),), level=3),
-    _row("off_balance", "OFF BALANCE SHEET ACCOUNTS", codes=(("900000", "999999"),), level=0, total=True),
-)
 
 
 class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
@@ -228,7 +60,7 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
     def _dynamic_lines_generator(
         self, report, options, all_column_groups_expression_totals, warnings=None,
     ):
-        """The Notes report is defined by native account.report.line records."""
+        """Notes is defined entirely by native account.report.line records."""
         return []
 
     def _custom_line_postprocessor(self, report, options, lines):
@@ -239,7 +71,9 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
             "VHG_BS_EQUITY_SECTION", "VHG_BS_LIABILITY_SECTION", "VHG_BS_CL_SECTION",
         }
         section_codes = {"VHG_BS_ASSETS_SECTION", "VHG_BS_EL_SECTION"}
-        report_lines = self.env["account.report.line"].search([("report_id", "=", report.id)])
+        report_lines = self.env["account.report.line"].search([
+            ("report_id", "=", report.id),
+        ])
         code_by_id = {line.id: line.code for line in report_lines}
         for line in lines:
             _model, record_id = report._get_model_info_from_id(line["id"])
@@ -249,9 +83,9 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
             if code in section_codes:
                 line["class"] = f"{line.get('class', '')} o_vhg_bs_section".strip()
             if code and self._mapped_account_codes(report_lines.browse(record_id)):
-                # Native account groupby only creates a row when a matching move line
-                # exists. Management Notes must instead show every configured account.
-                line["expand_function"] = "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
+                line["expand_function"] = (
+                    "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
+                )
         return lines
 
     @staticmethod
@@ -265,17 +99,19 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
             domain = ast.literal_eval(expression.formula)
         except (SyntaxError, ValueError):
             return []
-        for field_name, operator, value in domain:
-            if field_name == "account_id.code" and operator == "in":
-                return value
-        return []
+        return next((
+            value for field_name, operator, value in domain
+            if field_name == "account_id.code" and operator == "in"
+        ), [])
 
     def _report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet(
-        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None,
+        self, line_dict_id, groupby, options, progress, offset,
+        unfold_all_batch_data=None,
     ):
         report = self.env["account.report"].browse(options["report_id"])
         report_line_id = next((
-            record_id for _markup, model, record_id in reversed(report._parse_line_id(line_dict_id))
+            record_id
+            for _markup, model, record_id in reversed(report._parse_line_id(line_dict_id))
             if model == "account.report.line"
         ), None)
         report_line = self.env["account.report.line"].browse(report_line_id)
@@ -283,9 +119,14 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
         if not account_codes:
             return {"lines": [], "offset_increment": 0, "has_more": False}
 
-        accounts = self.env["account.account"].search([("code", "in", account_codes)])
+        accounts = self.env["account.account"].search([
+            ("company_ids", "in", report.get_report_company_ids(options)),
+            ("code", "in", account_codes),
+        ])
         accounts_by_code = {account.code: account for account in accounts}
-        ordered_accounts = [accounts_by_code[code] for code in account_codes if code in accounts_by_code]
+        ordered_accounts = [
+            accounts_by_code[code] for code in account_codes if code in accounts_by_code
+        ]
         balances_by_group = {}
         for group_key, column_options in report._split_options_per_column_group(options).items():
             query = report._get_report_query(column_options, "from_beginning")
@@ -303,10 +144,11 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
                 from_clause=query.from_clause,
                 currency_join=report._currency_table_aml_join(column_options),
                 where_clause=query.where_clause,
-                account_ids=tuple(account.id for account in ordered_accounts) or (0,),
+                account_ids=tuple(accounts.ids) or (0,),
             ))
             balances_by_group[group_key] = {
-                item["account_id"]: item["balance"] for item in self.env.cr.dictfetchall()
+                row["account_id"]: row["balance"]
+                for row in self.env.cr.dictfetchall()
             }
 
         lines = []
@@ -317,62 +159,100 @@ class VhgBalanceSheetNotesReportHandler(VhgBalanceSheetReportBase):
                 options=options,
             ) for column in options["columns"]]
             lines.append({
-                "id": report._get_generic_line_id("account.account", account.id, parent_line_id=line_dict_id),
+                "id": report._get_generic_line_id(
+                    "account.account", account.id, parent_line_id=line_dict_id,
+                ),
                 "parent_id": line_dict_id,
                 "name": f"{account.code} {account.name}",
                 "level": report_line.hierarchy_level + 2,
                 "columns": columns,
                 "caret_options": "account.account",
             })
-        return {"lines": lines, "offset_increment": len(lines), "has_more": False}
-
-    _ROWS = (
-        _row("assets", "ASSETS", children=("noncurrent_assets", "current_assets"), level=0, total=True),
-        _row("noncurrent_assets", "Non Current Assets", children=("ppe", "intangibles", "other_noncurrent"), level=1, total=True),
-        ASSET_DETAIL[0], ASSET_DETAIL[1],
-        _row("total_noncurrent", "Total Non Current Assets", children=("ppe", "intangibles"), level=2, total=True),
-        _row("other_noncurrent", "Other Non Current Assets", children=("investment_associates", "construction"), level=2, total=True),
-        ASSET_DETAIL[2], ASSET_DETAIL[3],
-        _row("current_assets", "Current Assets", children=("cash", "bank", "receivables", "inventory", "prepayments", "advanced_tax", "other_assets"), level=1, total=True),
-        ASSET_DETAIL[4], ASSET_DETAIL[5],
-        _row("receivables", "Trade & Other Receivables", children=tuple(row["key"] for row in ASSET_DETAIL[6:16]), level=2, total=True),
-        *ASSET_DETAIL[6:],
-        _row("equity_liabilities", "SHAREHOLDERS' EQUITY & LIABILITIES", children=("equity", "liabilities"), level=0, total=True),
-        _row("equity", "SHAREHOLDERS' EQUITY", children=("share_capital", "dividend", "retained_earnings", "current_year_profit"), level=1, total=True),
-        EQUITY_LIABILITY_DETAIL[0], EQUITY_LIABILITY_DETAIL[1],
-        _row("retained_earnings", "Retained Earning", children=("retained", "unallocated", "previous_unallocated"), level=2, total=True),
-        *EQUITY_LIABILITY_DETAIL[2:5],
-        _row("current_year_profit", "Current year's profit or loss", children=("current_profit",), level=2, total=True),
-        EQUITY_LIABILITY_DETAIL[5],
-        _row("liabilities", "LIABILITIES", children=("noncurrent_liabilities", "current_liabilities"), level=1, total=True),
-        *EQUITY_LIABILITY_DETAIL[6:7],
-        _row("current_liabilities", "CURRENT LIABILITIES", children=("trade_payables", "deferred_income", "tax_payable", "other_payable"), level=2, total=True),
-        *EQUITY_LIABILITY_DETAIL[7:],
-    )
+        return {
+            "lines": lines,
+            "offset_increment": len(lines),
+            "has_more": False,
+        }
 
 
 class VhgBalanceSheetSummaryReportHandler(VhgBalanceSheetReportBase):
     _name = "tha.vhg.balance.sheet.summary.report.handler"
     _description = "VHG Balance Sheet Summary Report Handler"
     _REPORT_TITLE = "Management Balance Sheet Summary"
-    _ROWS = (
-        _row("assets", "ASSETS", children=("total_noncurrent_summary", "current_assets"), level=0, total=True),
-        _row("total_noncurrent_summary", "Total Non Current Assets", children=("noncurrent_summary", "other_noncurrent"), level=1, total=True),
-        _row("noncurrent_summary", "Non Current Assets", children=("ppe", "intangibles"), level=2, total=True),
-        ASSET_DETAIL[0], ASSET_DETAIL[1],
-        _row("other_noncurrent", "Other Non Current Assets", children=("investment_associates", "construction"), level=2, total=True),
-        ASSET_DETAIL[2], ASSET_DETAIL[3],
-        _row("current_assets", "Current Assets", children=("cash", "bank", "receivables_summary", "inventory", "prepayments", "advanced_tax", "other_assets"), level=1, total=True),
-        ASSET_DETAIL[4], ASSET_DETAIL[5],
-        _row("receivables_summary", "Trade & Other Receivables", codes=(("130010", "131999"),), level=2),
-        *ASSET_DETAIL[16:],
-        _row("equity_liabilities", "SHAREHOLDERS' EQUITY & LIABILITIES", children=("equity_summary", "liabilities_summary"), level=0, total=True),
-        _row("equity_summary", "SHAREHOLDERS' EQUITY", children=("share_capital", "advance_share", "retained_summary", "unallocated", "current_profit", "previous_unallocated", "joint_investment"), level=1, total=True),
-        EQUITY_LIABILITY_DETAIL[0],
-        _row("advance_share", "Advance Share Capital", codes=("400040",), level=2),
-        _row("retained_summary", "Retained Earning", codes=("410000",), level=2),
-        EQUITY_LIABILITY_DETAIL[3], EQUITY_LIABILITY_DETAIL[5], EQUITY_LIABILITY_DETAIL[4],
-        _row("joint_investment", "Joint Investment for Departments", codes=("320020",), level=2),
-        _row("liabilities_summary", "LIABILITIES", children=("noncurrent_liabilities", "trade_payables", "deferred_income", "tax_payable", "other_payable"), level=1, total=True),
-        *EQUITY_LIABILITY_DETAIL[6:],
+
+    _SUMMARY_LINES = (
+        ("VHG_BS_ASSETS_SECTION", 0),
+        ("VHG_BS_NCA_SECTION", 1),
+        ("VHG_BS_PPE", 2),
+        ("VHG_BS_INTANGIBLE", 2),
+        ("VHG_BS_OTHER_NCA_SECTION", 1),
+        ("VHG_BS_INVESTMENT", 2),
+        ("VHG_BS_CONSTRUCTION", 2),
+        ("VHG_BS_CA_SECTION", 1),
+        ("VHG_BS_CASH", 2),
+        ("VHG_BS_BANK", 2),
+        ("VHG_BS_RECEIVABLES", 2),
+        ("VHG_BS_INVENTORY", 2),
+        ("VHG_BS_PREPAYMENTS", 2),
+        ("VHG_BS_ADVANCED_TAX", 2),
+        ("VHG_BS_OTHER_ASSETS", 2),
+        ("VHG_BS_EL_SECTION", 0),
+        ("VHG_BS_EQUITY_SECTION", 1),
+        ("VHG_BS_SHARE_CAPITAL", 2),
+        ("VHG_BS_DIVIDEND", 2),
+        ("RET_EARN", 2),
+        ("Cur_Yr_PL", 2),
+        ("VHG_BS_LIABILITY_SECTION", 1),
+        ("VHG_BS_NCL", 2),
+        ("VHG_BS_CL_SECTION", 2),
+        ("VHG_BS_TRADE_PAYABLES", 3),
+        ("VHG_BS_DEFERRED", 3),
+        ("VHG_BS_TAX_PAYABLE", 3),
+        ("VHG_BS_OTHER_PAYABLE", 3),
+        ("VHG_BS_OFF_BALANCE", 0),
     )
+
+    def _dynamic_lines_generator(
+        self, report, options, all_column_groups_expression_totals, warnings=None,
+    ):
+        """Reuse Notes values so mappings and formulas have one source of truth."""
+        notes_report = self.env.ref(
+            "tha_vhg_bs_ext.report_vhg_balance_sheet_notes"
+        ).with_context(self.env.context).with_company(self.env.company)
+        notes_options = notes_report.get_options(options)
+        notes_lines = notes_report._get_lines(notes_options)
+        source_records = {
+            line.code: line
+            for line in self.env["account.report.line"].search([
+                ("report_id", "=", notes_report.id),
+            ])
+        }
+        source_lines = {}
+        for line in notes_lines:
+            model, record_id = notes_report._get_model_info_from_id(line["id"])
+            if model == "account.report.line":
+                source = self.env[model].browse(record_id)
+                source_lines.setdefault(source.code, line)
+
+        result = []
+        for code, level in self._SUMMARY_LINES:
+            source = source_lines.get(code, {
+                "name": source_records[code].name,
+                "columns": [report._build_column_dict(
+                    0.0, column, options=options,
+                ) for column in options["columns"]],
+            })
+            line = {
+                **source,
+                "id": report._get_generic_line_id(
+                    None, None, markup=f"vhg_bs_summary_{code.lower()}"
+                ),
+                "level": level,
+                "class": "fw-bold" if level <= 1 else "",
+                "unfoldable": False,
+                "unfolded": False,
+            }
+            for key in ("parent_id", "expand_function", "groupby"):
+                line.pop(key, None)
+            result.append((0, line))
+        return result
