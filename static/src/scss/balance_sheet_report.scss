@@ -2,13 +2,13 @@
     // The report header stays fixed while table rows scroll below it. Give
     // each frozen layer an opaque surface so values cannot show through.
     .o_account_reports_table > thead#table_header.sticky {
-        background: var(--AccountFinancial-background-color) !important;
+        background-color: var(--AccountFinancial-background-color, var(--body-bg, #fff)) !important;
         isolation: isolate;
         z-index: 2;
     }
 
     .o_account_reports_table > thead#table_header.sticky th {
-        background: var(--AccountFinancial-background-color) !important;
+        background-color: var(--AccountFinancial-background-color, var(--body-bg, #fff)) !important;
     }
 
     .o_account_reports_table > thead#table_header.sticky tr[data-id="report_title_row"] th {
