@@ -161,7 +161,7 @@
                         <field name="code">VHG_BS_EQUITY_SECTION</field>
                         <field name="sequence">180</field>
                         <field name="hierarchy_level">1</field>
-                        <field name="aggregation_formula">VHG_BS_SHARE_CAPITAL.balance + VHG_BS_DIVIDEND.balance + RET_EARN.balance + Cur_Yr_PL.balance</field>
+                        <field name="aggregation_formula">VHG_BS_SHARE_CAPITAL.balance + VHG_BS_DIVIDEND.balance + RET_EARN.balance + Cur_Yr_PL.balance + VHG_BS_NCI.balance</field>
                         <field name="children_ids">
                             <record id="bs_notes_share_capital" model="account.report.line">
                                 <field name="name">Issued &amp; Paid Up Share Capital</field>
@@ -187,7 +187,7 @@
                                 <field name="groupby" eval="False"/>
                                 <field name="foldable" eval="True"/>
                                 <field name="hide_if_zero" eval="True"/>
-                                <field name="aggregation_formula">RETAINED_EARNING_TOTAL.balance + UNAFFECTED_EARNINGS_COPY.balance + PREV_YEAR_EARNINGS_COPY.balance</field>
+                                <field name="aggregation_formula">RETAINED_EARNING_TOTAL.balance + PREV_YEAR_EARNINGS_COPY.balance</field>
                                 <field name="children_ids">
                                     <record id="bs_notes_retained_410000" model="account.report.line">
                                         <field name="name">410000 Retained Earning</field>
@@ -197,16 +197,7 @@
                                         <field name="groupby">account_id</field>
                                         <field name="foldable" eval="True"/>
                                         <field name="hide_if_zero" eval="True"/>
-                                        <field name="domain_formula">-sum([('account_id.code', 'in', ['410000', '410020'])])</field>
-                                    </record>
-                                    <record id="bs_notes_unallocated_earnings" model="account.report.line">
-                                        <field name="name">Unallocated Earnings</field>
-                                        <field name="code">UNAFFECTED_EARNINGS_COPY</field>
-                                        <field name="sequence">230</field>
-                                        <field name="hierarchy_level">5</field>
-                                        <field name="foldable" eval="True"/>
-                                        <field name="hide_if_zero" eval="True"/>
-                                        <field name="aggregation_formula">CURR_YEAR_EARNINGS_COPY.balance + PREV_YEAR_EARNINGS_COPY.balance</field>
+                                        <field name="domain_formula">-sum([('account_id.code', 'in', ['410000'])])</field>
                                     </record>
                                     <record id="bs_notes_previous_unallocated_earnings" model="account.report.line">
                                         <field name="name">Previous Years Unallocated Earnings</field>
@@ -272,11 +263,19 @@
                                             <record id="bs_notes_current_profit_balance" model="account.report.expression">
                                                 <field name="label">balance</field>
                                                 <field name="engine">aggregation</field>
-                                                <field name="formula">PREV_YEAR_EARNINGS_COPY.balance_domain + PREV_YEAR_EARNINGS_COPY.allocated_earnings</field>
+                                                <field name="formula">CURR_YEAR_EARNINGS_COPY.pnl + CURR_YEAR_EARNINGS_COPY.alloc</field>
                                             </record>
                                         </field>
                                     </record>
                                 </field>
+                            </record>
+                            <record id="bs_notes_NCI" model="account.report.line">
+                                <field name="name">Non Controlling Interest</field>
+                                <field name="code">VHG_BS_NCI</field>
+                                <field name="sequence">265</field>
+                                <field name="groupby">account_id</field>
+                                <field name="foldable" eval="True"/>
+                                <field name="domain_formula">-sum([('account_id.code', 'in', ['410020'])])</field>
                             </record>
                         </field>
                     </record>

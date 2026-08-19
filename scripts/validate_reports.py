@@ -160,6 +160,7 @@ mapped_codes = {
     "VHG_BS_SHARE_CAPITAL": "400010",
     "VHG_BS_DIVIDEND": "400070",
     "RETAINED_EARNING_TOTAL": "410000",
+    "VHG_BS_NCI": "410020",
     "VHG_BS_TRADE_PAYABLES": "310010",
     "VHG_BS_DEFERRED": "310205",
     "VHG_BS_TAX_PAYABLE": "310255",
@@ -177,25 +178,50 @@ assert "account_id.code" in by_code["VHG_BS_OTHER_ASSETS"].expression_ids.filter
 ).formula
 
 assert by_code["RET_EARN"].expression_ids.filtered(lambda expression: expression.label == "balance").formula == (
-    "RETAINED_EARNING_TOTAL.balance + UNAFFECTED_EARNINGS_COPY.balance + "
-    "PREV_YEAR_EARNINGS_COPY.balance"
+    "RETAINED_EARNING_TOTAL.balance + PREV_YEAR_EARNINGS_COPY.balance"
 )
 assert by_code["Cur_Yr_PL"].expression_ids.filtered(lambda expression: expression.label == "balance").formula == "CURR_YEAR_EARNINGS_COPY.balance"
-assert by_code["UNAFFECTED_EARNINGS_COPY"].expression_ids.filtered(lambda expression: expression.label == "balance").formula == (
-    "CURR_YEAR_EARNINGS_COPY.balance + PREV_YEAR_EARNINGS_COPY.balance"
-)
 assert by_code["RETAINED_EARNING_TOTAL"].parent_id == by_code["RET_EARN"]
-assert by_code["UNAFFECTED_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["PREV_YEAR_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["CURR_YEAR_EARNINGS_COPY"].parent_id == by_code["Cur_Yr_PL"]
+assert "UNAFFECTED_EARNINGS_COPY" not in by_code
 current_expressions = {expression.label: expression for expression in by_code["CURR_YEAR_EARNINGS_COPY"].expression_ids}
 assert current_expressions["pnl"].subformula == "cross_report(account_reports.profit_and_loss)"
 assert current_expressions["pnl"].date_scope == "from_fiscalyear"
 assert current_expressions["alloc"].date_scope == "from_fiscalyear"
+assert current_expressions["balance"].formula == "CURR_YEAR_EARNINGS_COPY.pnl + CURR_YEAR_EARNINGS_COPY.alloc"
 previous_expressions = {expression.label: expression for expression in by_code["PREV_YEAR_EARNINGS_COPY"].expression_ids}
 assert previous_expressions["allocated_earnings"].date_scope == "from_beginning"
 assert previous_expressions["balance_domain"].date_scope == "from_beginning"
+assert by_code["VHG_BS_NCI"].expression_ids.filtered(
+    lambda expression: expression.engine == "domain"
+).subformula == "-sum"
 print("Retained earnings and current-year P&L source formulas: OK")
+
+earnings_options = notes.get_options({
+    "date": {
+        "date_from": "2026-04-01",
+        "date_to": "2026-08-19",
+        "filter": "custom",
+        "mode": "single",
+    },
+})
+earnings_lines = {line["name"]: line for line in notes._get_lines(earnings_options)}
+assert earnings_lines["Retained Earning"]["columns"][0]["no_format"] == 404_905_750.0
+assert earnings_lines["Previous Years Unallocated Earnings"]["columns"][0]["no_format"] == 96_905_750.0
+assert earnings_lines["Current year's profit or loss"]["columns"][0]["no_format"] == 430_126_420.0
+assert (
+    earnings_lines["Retained Earning"]["columns"][0]["no_format"]
+    + earnings_lines["Current year's profit or loss"]["columns"][0]["no_format"]
+) == 835_032_170.0
+
+original_balance_sheet = env.ref("account_reports.balance_sheet").with_company(company).with_context(**report_context)
+original_equity = next(
+    line for line in original_balance_sheet._get_lines(original_balance_sheet.get_options(earnings_options))
+    if line["name"] == "EQUITY"
+)["columns"][0]["no_format"]
+assert earnings_lines["SHAREHOLDERS' EQUITY"]["columns"][0]["no_format"] == original_equity
+print("Victoria retained earnings and equity reconciliation: OK")
 
 ppe_line = next(line for line in notes._get_lines(notes.get_options({})) if line["name"] == "Property, Plant and Equipment")
 assert ppe_line["expand_function"] == "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
