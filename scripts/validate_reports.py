@@ -89,8 +89,22 @@ if len(multi_company_ids) > 1:
     assert "ASSETS" in names
     assert "SHAREHOLDERS' EQUITY & LIABILITIES" in names
     if report == summary:
-        assert "OFF BALANCE SHEET ACCOUNTS" in names
+        off_balance = next(
+            (line for line in notes._get_lines(notes.get_options({}))
+             if line.get("name") == "OFF BALANCE SHEET ACCOUNTS"),
+            None,
+        )
+        has_off_balance = bool(off_balance) and any(
+            isinstance(column.get("no_format"), (int, float)) and column["no_format"]
+            for column in off_balance.get("columns", [])
+        )
+        assert ("OFF BALANCE SHEET ACCOUNTS" in names) == has_off_balance
     print(f"{report.name}: {len(lines)} lines, {len(options['columns'])} columns")
+
+summary_lines = summary._get_lines(summary.get_options({}))
+assert all("groupby" not in line for line in summary_lines), (
+    "Balance Sheet Summary must not expose account_id user grouping"
+)
 
 notes_options = notes.get_options({"unfold_all": True})
 notes_lines = notes._get_lines(notes_options)

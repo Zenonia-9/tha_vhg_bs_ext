@@ -245,6 +245,15 @@ class VhgBalanceSheetSummaryReportHandler(VhgBalanceSheetReportBase):
         ("VHG_BS_OFF_BALANCE", 0),
     )
 
+    @staticmethod
+    def _line_has_amount(line):
+        """Return whether a generated line has a non-zero value in any column."""
+        for column in line.get("columns", []):
+            value = column.get("no_format", column.get("raw_value"))
+            if isinstance(value, (int, float)) and value:
+                return True
+        return False
+
     def _dynamic_lines_generator(
         self, report, options, all_column_groups_expression_totals, warnings=None,
     ):
@@ -252,7 +261,9 @@ class VhgBalanceSheetSummaryReportHandler(VhgBalanceSheetReportBase):
         notes_report = self.env.ref(
             "tha_vhg_bs_ext.report_vhg_balance_sheet_notes"
         ).with_context(self.env.context).with_company(self.env.company)
-        notes_options = notes_report.get_options(options)
+        # get_options mutates the options dictionary (notably report_id).
+        # Keep Summary's options intact for its own line generation.
+        notes_options = notes_report.get_options(dict(options))
         notes_lines = notes_report._get_lines(notes_options)
         source_records = {
             line.code: line
@@ -275,6 +286,10 @@ class VhgBalanceSheetSummaryReportHandler(VhgBalanceSheetReportBase):
                     0.0, column, options=options,
                 ) for column in options["columns"]],
             })
+            # The off-balance section is informational; do not show an empty
+            # section in Summary even though Notes keeps the native line.
+            if code == "VHG_BS_OFF_BALANCE" and not self._line_has_amount(source):
+                continue
             line = {
                 **source,
                 "id": report._get_generic_line_id(
