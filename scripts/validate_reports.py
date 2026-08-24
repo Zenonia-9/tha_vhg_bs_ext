@@ -200,6 +200,7 @@ assert by_code["PREV_YEAR_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["CURR_YEAR_EARNINGS_COPY"].parent_id == by_code["Cur_Yr_PL"]
 assert "UNAFFECTED_EARNINGS_COPY" not in by_code
 current_expressions = {expression.label: expression for expression in by_code["CURR_YEAR_EARNINGS_COPY"].expression_ids}
+previous_expressions = {expression.label: expression for expression in by_code["PREV_YEAR_EARNINGS_COPY"].expression_ids}
 assert current_expressions["pnl"].formula == "VHG_EARNINGS_AFTER_TAX.balance"
 assert current_expressions["pnl"].subformula == (
     "cross_report(tha_vhg_pnl_ext.report_vhg_profit_and_loss)"
@@ -207,7 +208,8 @@ assert current_expressions["pnl"].subformula == (
 assert current_expressions["pnl"].date_scope == "from_fiscalyear"
 assert current_expressions["alloc"].date_scope == "from_fiscalyear"
 assert current_expressions["balance"].formula == "CURR_YEAR_EARNINGS_COPY.pnl + CURR_YEAR_EARNINGS_COPY.alloc"
-previous_expressions = {expression.label: expression for expression in by_code["PREV_YEAR_EARNINGS_COPY"].expression_ids}
+assert "510585" in previous_expressions["balance_domain"].formula
+assert "702316" in previous_expressions["balance_domain"].formula
 assert previous_expressions["allocated_earnings"].date_scope == "from_beginning"
 assert previous_expressions["balance_domain"].date_scope == "from_beginning"
 assert by_code["VHG_BS_NCI"].expression_ids.filtered(

@@ -215,7 +215,7 @@
                                             <record id="bs_notes_previous_unallocated_domain" model="account.report.expression">
                                                 <field name="label">balance_domain</field>
                                                 <field name="engine">domain</field>
-                                                <field name="formula" eval="[('account_id.account_type', 'in', ('income', 'income_other', 'expense_direct_cost', 'expense', 'expense_depreciation'))]"/>
+                                                <field name="formula" eval="[('account_id.account_type', 'in', ('income', 'income_other', 'expense_direct_cost', 'expense', 'expense_depreciation')), ('account_id.code', 'not in', ['510585', '702316'])]"/>
                                                 <field name="subformula">-sum</field>
                                                 <field name="date_scope">from_beginning</field>
                                             </record>
@@ -331,7 +331,7 @@
                                         <field name="sequence">330</field>
                                         <field name="groupby">account_id</field>
                                         <field name="foldable" eval="True"/>
-                                        <field name="domain_formula">-sum([('account_id.code', 'in', ['310110'])])</field>
+                                        <field name="domain_formula">-sum([('account_id.code', 'in', ['310110', '510585', '702316'])])</field>
                                     </record>
                                 </field>
                             </record>
