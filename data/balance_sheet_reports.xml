@@ -249,9 +249,9 @@
                                             <record id="bs_notes_current_profit_pnl" model="account.report.expression">
                                                 <field name="label">pnl</field>
                                                 <field name="engine">aggregation</field>
-                                                <field name="formula">NEP.balance</field>
+                                                <field name="formula">VHG_EARNINGS_AFTER_TAX.balance</field>
                                                 <field name="date_scope">from_fiscalyear</field>
-                                                <field name="subformula">cross_report(account_reports.profit_and_loss)</field>
+                                                <field name="subformula">cross_report(tha_vhg_pnl_ext.report_vhg_profit_and_loss)</field>
                                             </record>
                                             <record id="bs_notes_current_profit_alloc" model="account.report.expression">
                                                 <field name="label">alloc</field>

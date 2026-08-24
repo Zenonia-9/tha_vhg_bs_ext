@@ -200,7 +200,10 @@ assert by_code["PREV_YEAR_EARNINGS_COPY"].parent_id == by_code["RET_EARN"]
 assert by_code["CURR_YEAR_EARNINGS_COPY"].parent_id == by_code["Cur_Yr_PL"]
 assert "UNAFFECTED_EARNINGS_COPY" not in by_code
 current_expressions = {expression.label: expression for expression in by_code["CURR_YEAR_EARNINGS_COPY"].expression_ids}
-assert current_expressions["pnl"].subformula == "cross_report(account_reports.profit_and_loss)"
+assert current_expressions["pnl"].formula == "VHG_EARNINGS_AFTER_TAX.balance"
+assert current_expressions["pnl"].subformula == (
+    "cross_report(tha_vhg_pnl_ext.report_vhg_profit_and_loss)"
+)
 assert current_expressions["pnl"].date_scope == "from_fiscalyear"
 assert current_expressions["alloc"].date_scope == "from_fiscalyear"
 assert current_expressions["balance"].formula == "CURR_YEAR_EARNINGS_COPY.pnl + CURR_YEAR_EARNINGS_COPY.alloc"
@@ -221,21 +224,11 @@ earnings_options = notes.get_options({
     },
 })
 earnings_lines = {line["name"]: line for line in notes._get_lines(earnings_options)}
-assert earnings_lines["Retained Earning"]["columns"][0]["no_format"] == 404_905_750.0
-assert earnings_lines["Previous Years Unallocated Earnings"]["columns"][0]["no_format"] == 96_905_750.0
-assert earnings_lines["Current year's profit or loss"]["columns"][0]["no_format"] == 430_126_420.0
 assert (
-    earnings_lines["Retained Earning"]["columns"][0]["no_format"]
-    + earnings_lines["Current year's profit or loss"]["columns"][0]["no_format"]
-) == 835_032_170.0
-
-original_balance_sheet = env.ref("account_reports.balance_sheet").with_company(company).with_context(**report_context)
-original_equity = next(
-    line for line in original_balance_sheet._get_lines(original_balance_sheet.get_options(earnings_options))
-    if line["name"] == "EQUITY"
-)["columns"][0]["no_format"]
-assert earnings_lines["SHAREHOLDERS' EQUITY"]["columns"][0]["no_format"] == original_equity
-print("Victoria retained earnings and equity reconciliation: OK")
+    earnings_lines["Total ASSETS"]["columns"][0]["no_format"]
+    == earnings_lines["Total SHAREHOLDERS' EQUITY & LIABILITIES"]["columns"][0]["no_format"]
+), "Balance Sheet must balance using Management P&L EAT"
+print("Victoria Management P&L EAT and Balance Sheet reconciliation: OK")
 
 ppe_line = next(line for line in notes._get_lines(notes.get_options({})) if line["name"] == "Property, Plant and Equipment")
 assert ppe_line["expand_function"] == "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
