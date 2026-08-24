@@ -163,7 +163,12 @@ if len(analytic_accounts) == 3 and pnl_notes:
 
     pnl_summary = env.ref("tha_vhg_pnl_ext.report_vhg_profit_and_loss_summary").with_company(company).with_context(**report_context)
     summary_analytic_options = pnl_summary.get_options(analytic_input)
-    assert [header["name"] for header in summary_analytic_options["vhg_summary_horizontal_headers"][:4]] == expected_analytic_headers
+    assert summary_analytic_options["vhg_summary_horizontal_mode"] is False
+    assert summary_analytic_options["vhg_summary_analytic_headers"] == expected_analytic_headers[:-1]
+    assert [column["expression_label"] for column in summary_analytic_options["columns"]][7:13] == [
+        "ytd_actual", "ytd_actual_percent", "analytic_0", "analytic_1", "analytic_2",
+        "analytic_total",
+    ]
     print("Management report analytic columns and total: OK")
 
 assert notes.line_ids, "Notes must use native account.report.line records"
