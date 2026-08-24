@@ -230,6 +230,23 @@ assert (
 ), "Balance Sheet must balance using Management P&L EAT"
 print("Victoria Management P&L EAT and Balance Sheet reconciliation: OK")
 
+pnl_eat_options = pnl_notes.get_options({
+    "date": {
+        "date_from": "2026-04-01",
+        "date_to": "2026-08-19",
+        "filter": "custom",
+        "mode": "range",
+    },
+})
+pnl_eat_line = next(
+    line for line in pnl_notes._get_lines(pnl_eat_options)
+    if line["name"] == "Earnings After Tax"
+)
+assert earnings_lines["Current year's profit or loss"]["columns"][0]["no_format"] == (
+    pnl_eat_line["columns"][-1]["no_format"]
+), "Current year's profit or loss must use Apr-to-current custom P&L EAT"
+print("Current-year EAT uses Apr-to-current custom P&L period: OK")
+
 ppe_line = next(line for line in notes._get_lines(notes.get_options({})) if line["name"] == "Property, Plant and Equipment")
 assert ppe_line["expand_function"] == "_report_expand_unfoldable_line_mapped_accounts_vhg_balance_sheet"
 ppe_expanded = notes._expand_unfoldable_line(
