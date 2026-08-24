@@ -127,6 +127,45 @@ if pnl_notes:
     )
     print("P&L Notes native totals: OK")
 
+analytic_accounts = env["account.analytic.account"].search([
+    ("name", "in", ("Pro X", "Pro Y", "Pro Z")),
+], order="id")
+if len(analytic_accounts) == 3 and pnl_notes:
+    analytic_input = {
+        "date": {
+            "date_from": "2026-07-01",
+            "date_to": "2026-07-31",
+            "filter": "custom",
+            "mode": "range",
+        },
+        "analytic_accounts_groupby": analytic_accounts.ids,
+    }
+    expected_analytic_headers = analytic_accounts.mapped("name") + ["Total"]
+    pnl_analytic_options = pnl_notes.get_options(analytic_input)
+    assert [item["name"] for item in pnl_analytic_options["vhg_notes_header_rows"][-1]] == expected_analytic_headers
+    pnl_regular_lines = {line["name"]: line for line in pnl_notes._get_lines(
+        pnl_notes.get_options({"date": analytic_input["date"]})
+    )}
+    pnl_analytic_lines = {line["name"]: line for line in pnl_notes._get_lines(pnl_analytic_options)}
+    assert pnl_analytic_lines["Net Operating Revenue"]["columns"][-1]["no_format"] == (
+        pnl_regular_lines["Net Operating Revenue"]["columns"][-1]["no_format"]
+    )
+
+    bs_analytic_options = notes.get_options(analytic_input)
+    assert [item["name"] for item in bs_analytic_options["vhg_notes_header_rows"][-1]] == expected_analytic_headers
+    bs_regular_lines = {line["name"]: line for line in notes._get_lines(
+        notes.get_options({"date": analytic_input["date"]})
+    )}
+    bs_analytic_lines = {line["name"]: line for line in notes._get_lines(bs_analytic_options)}
+    assert bs_analytic_lines["Total ASSETS"]["columns"][-1]["no_format"] == (
+        bs_regular_lines["Total ASSETS"]["columns"][-1]["no_format"]
+    )
+
+    pnl_summary = env.ref("tha_vhg_pnl_ext.report_vhg_profit_and_loss_summary").with_company(company).with_context(**report_context)
+    summary_analytic_options = pnl_summary.get_options(analytic_input)
+    assert [header["name"] for header in summary_analytic_options["vhg_summary_horizontal_headers"][:4]] == expected_analytic_headers
+    print("Management report analytic columns and total: OK")
+
 assert notes.line_ids, "Notes must use native account.report.line records"
 all_notes_lines = env["account.report.line"].search([("report_id", "=", notes.id)])
 by_code = {line.code: line for line in all_notes_lines}

@@ -39,11 +39,18 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
         )
         selected_horizontal_group = options.get("selected_horizontal_group_id")
         horizontal_names = {}
+        analytic_names = {}
         for header in options.get("column_headers", [])[1:]:
             for item in header:
                 horizontal_element = item.get("horizontal_groupby_element")
                 if horizontal_element:
                     horizontal_names[tuple(sorted(horizontal_element.items()))] = item["name"]
+                analytic_accounts = tuple(
+                    item.get("forced_options", {}).get("analytic_accounts_list", ())
+                )
+                if analytic_accounts:
+                    analytic_names[analytic_accounts] = item["name"]
+        has_analytic_columns = bool(analytic_names)
 
         top_headers = []
         horizontal_headers = []
@@ -54,9 +61,17 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
                 top_headers[-1]["colspan"] += 1
             else:
                 top_headers.append({"name": date_name, "colspan": 1})
-            if selected_horizontal_group:
+            if selected_horizontal_group or has_analytic_columns:
                 horizontal_key = tuple(column_group.get("horizontal_groupby_element", ()))
-                horizontal_name = horizontal_names.get(horizontal_key, "")
+                analytic_accounts = tuple(
+                    column_group["forced_options"].get("analytic_accounts_list", ())
+                )
+                if analytic_accounts:
+                    horizontal_name = analytic_names.get(analytic_accounts, "Analytic")
+                elif has_analytic_columns:
+                    horizontal_name = "Total"
+                else:
+                    horizontal_name = horizontal_names.get(horizontal_key, "")
                 if horizontal_headers and horizontal_headers[-1]["name"] == horizontal_name:
                     horizontal_headers[-1]["colspan"] += 1
                 else:
@@ -72,7 +87,7 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
             "vhg_notes_report_title": self._REPORT_TITLE,
             "vhg_notes_header_rows": (
                 [top_headers, horizontal_headers]
-                if selected_horizontal_group else [top_headers]
+                if selected_horizontal_group or has_analytic_columns else [top_headers]
             ),
             "show_horizontal_group_total": show_consolidate,
         })

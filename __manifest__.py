@@ -2,7 +2,7 @@
 {
     "name": "VHG Balance Sheet Extension",
     "summary": "VHG management Balance Sheet notes and summary reports.",
-    "version": "19.0.1.2.4",
+    "version": "19.0.1.2.5",
     "category": "Accounting/Accounting",
     "author": "Thein Htoo Aung",
     "license": "LGPL-3",
