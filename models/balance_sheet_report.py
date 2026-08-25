@@ -54,6 +54,7 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
 
         top_headers = []
         horizontal_headers = []
+        analytic_headers = []
         for column in options["columns"]:
             column_group = options["column_groups"][column["column_group_key"]]
             date_name = column_group["forced_options"].get("date", {}).get("string", "")
@@ -61,21 +62,22 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
                 top_headers[-1]["colspan"] += 1
             else:
                 top_headers.append({"name": date_name, "colspan": 1})
-            if selected_horizontal_group or has_analytic_columns:
+            if selected_horizontal_group:
                 horizontal_key = tuple(column_group.get("horizontal_groupby_element", ()))
+                horizontal_name = horizontal_names.get(horizontal_key, "Actual")
+                if horizontal_headers and horizontal_headers[-1]["group_key"] == (date_name, horizontal_name):
+                    horizontal_headers[-1]["colspan"] += 1
+                else:
+                    horizontal_headers.append({"group_key": (date_name, horizontal_name), "name": horizontal_name, "colspan": 1})
+            if has_analytic_columns:
                 analytic_accounts = tuple(
                     column_group["forced_options"].get("analytic_accounts_list", ())
                 )
-                if analytic_accounts:
-                    horizontal_name = analytic_names.get(analytic_accounts, "Analytic")
-                elif has_analytic_columns:
-                    horizontal_name = "Total"
+                analytic_name = analytic_names.get(analytic_accounts, "Total") if analytic_accounts else "Total"
+                if analytic_headers and analytic_headers[-1]["group_key"] == (date_name, analytic_name):
+                    analytic_headers[-1]["colspan"] += 1
                 else:
-                    horizontal_name = horizontal_names.get(horizontal_key, "")
-                if horizontal_headers and horizontal_headers[-1]["name"] == horizontal_name:
-                    horizontal_headers[-1]["colspan"] += 1
-                else:
-                    horizontal_headers.append({"name": horizontal_name, "colspan": 1})
+                    analytic_headers.append({"group_key": (date_name, analytic_name), "name": analytic_name, "colspan": 1})
 
         # Odoo's native total is useful only when there are several company
         # columns. With a single company it merely duplicates that value.
@@ -85,10 +87,11 @@ class VhgBalanceSheetReportBase(models.AbstractModel):
                 ", ".join(companies.mapped("name")) or self.env.company.name
             ),
             "vhg_notes_report_title": self._REPORT_TITLE,
-            "vhg_notes_header_rows": (
-                [top_headers, horizontal_headers]
-                if selected_horizontal_group or has_analytic_columns else [top_headers]
-            ),
+            "vhg_notes_header_rows": [
+                top_headers,
+                *([horizontal_headers] if selected_horizontal_group else []),
+                *([analytic_headers] if has_analytic_columns else []),
+            ],
             "show_horizontal_group_total": show_consolidate,
         })
         options["column_headers"] = [top_headers]

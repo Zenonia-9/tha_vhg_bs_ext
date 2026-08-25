@@ -171,6 +171,22 @@ if len(analytic_accounts) == 3 and pnl_notes:
     ]
     print("Management report analytic columns and total: OK")
 
+    horizontal_group = pnl_notes.horizontal_group_ids[:1]
+    if horizontal_group:
+        combined_input = {
+            **analytic_input,
+            "selected_horizontal_group_id": horizontal_group.id,
+        }
+        combined_pnl_options = pnl_notes.get_options(combined_input)
+        combined_bs_options = notes.get_options(combined_input)
+        assert len(combined_pnl_options["vhg_notes_header_rows"]) == 3
+        assert len(combined_bs_options["vhg_notes_header_rows"]) == 3
+        assert [item["name"] for item in combined_pnl_options["vhg_notes_header_rows"][-1]] == expected_analytic_headers
+        assert [item["name"] for item in combined_bs_options["vhg_notes_header_rows"][-1]] == expected_analytic_headers
+        assert combined_pnl_options["vhg_notes_header_rows"][1][0]["name"]
+        assert combined_bs_options["vhg_notes_header_rows"][1][0]["name"]
+        print("Combined horizontal and analytic header levels: OK")
+
 assert notes.line_ids, "Notes must use native account.report.line records"
 all_notes_lines = env["account.report.line"].search([("report_id", "=", notes.id)])
 by_code = {line.code: line for line in all_notes_lines}
