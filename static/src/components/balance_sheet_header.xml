@@ -21,7 +21,7 @@
                             <t t-out="header.name"/>
                         </th>
                     </t>
-                    <th t-if="controller.options.show_horizontal_group_total and headerRow_index === controller.options.vhg_notes_header_rows.length - 1"
+                    <th t-if="controller.options.show_horizontal_group_total and headerRow_index > 0"
                         class="column_header">Consolidate</th>
                 </tr>
             </t>

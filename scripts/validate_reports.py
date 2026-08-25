@@ -187,6 +187,22 @@ if len(analytic_accounts) == 3 and pnl_notes:
         assert combined_bs_options["vhg_notes_header_rows"][1][0]["name"]
         print("Combined horizontal and analytic header levels: OK")
 
+        comparison_input = {
+            **combined_input,
+            "date": {
+                "date_from": "2026-08-01",
+                "date_to": "2026-08-31",
+                "filter": "custom",
+                "mode": "range",
+            },
+            "comparison": {"filter": "previous_period", "number_period": 1},
+        }
+        period_pnl_options = pnl_notes.get_options(comparison_input)
+        period_pnl_headers = period_pnl_options["vhg_notes_header_rows"]
+        assert period_pnl_headers[0][0]["name"] == "Jul - Aug Total"
+        assert period_pnl_headers[0][0]["colspan"] == 2 * len(expected_analytic_headers)
+        assert [item["name"] for item in period_pnl_headers[-1][:4]] == expected_analytic_headers
+
 assert notes.line_ids, "Notes must use native account.report.line records"
 all_notes_lines = env["account.report.line"].search([("report_id", "=", notes.id)])
 by_code = {line.code: line for line in all_notes_lines}
